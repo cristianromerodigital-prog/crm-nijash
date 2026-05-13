@@ -227,19 +227,19 @@ select.info-input option{background:var(--surface2)}
   #kanban{
     scroll-snap-type:x mandatory;
     -webkit-overflow-scrolling:touch;
-    padding:12px 0;
+    padding:0;
     gap:0;
+    align-items:stretch;
   }
   .stage-col{
     scroll-snap-align:start;
     min-width:100vw;
     max-width:100vw;
+    max-height:none;
     border-radius:0;
-    border-left:none;
-    border-right:none;
-    border-top:none;
-    border-bottom:none;
-    border-left:3px solid var(--border);
+    border:none;
+    border-right:1px solid var(--border);
+    flex-shrink:0;
   }
   /* Indicador de etapa activa */
   #stageIndicator{
@@ -1326,31 +1326,44 @@ function initDemoMode() {
     ],
   };
 
-  // Mockear db para no crashear
+  // Mock db — dispara onSnapshot con datos demo reales
   db = {
     collection: () => ({
-      where: () => ({ onSnapshot: () => {} }),
-      doc: () => ({
+      where: (field, op, val) => ({
+        onSnapshot: (cb) => {
+          cb({
+            docChanges: () => Object.values(leadsData)
+              .filter(l => l[field] === val)
+              .map(d => ({ type:'added', doc:{ id:d.id, data:()=>({...d}) } }))
+          });
+          return () => {};
+        }
+      }),
+      doc: (id) => ({
         collection: () => ({
-          orderBy: () => ({ onSnapshot: cb => { cb({ docChanges: () => [], forEach: () => {} }); return () => {}; } }),
+          orderBy: () => ({
+            onSnapshot: (cb) => {
+              const tasks = (window._demoTasks && window._demoTasks[id]) || [];
+              cb({ docChanges: () => [], forEach: () => {} });
+              return () => {};
+            }
+          }),
           add: async () => {}
         }),
-        update: async () => {}
+        update: async (data) => {
+          if (leadsData[id]) Object.assign(leadsData[id], data);
+          renderCards();
+        }
       }),
       add: async (data) => {
-        const id = 'new_' + Date.now();
-        leadsData[id] = { id, ...data, updatedAt: now };
+        const newId = 'new_' + Date.now();
+        leadsData[newId] = { id:newId, ...data, updatedAt:now };
         renderCards();
-        return { id };
+        return { id:newId };
       }
     })
   };
   auth = { currentUser: { email: 'demo@crm.com' }, signOut: async () => {} };
-
-  renderKanban();
-  renderCards();
-  buildStageSelect('newStage');
-  buildTemplates();
 
   // En demo, openLead usa datos locales
   window._demoMode = true;
