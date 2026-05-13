@@ -1,7 +1,7 @@
-const CACHE = 'crm-v1';
+const CACHE = 'crm-v2';
 const PRECACHE = [
-  '/',
-  '/index.html',
+  './',
+  './index.html',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js',
