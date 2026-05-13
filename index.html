@@ -26,7 +26,8 @@
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+html{height:-webkit-fill-available}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;height:100dvh;height:-webkit-fill-available;overflow:hidden}
 button{cursor:pointer;border:none;font-family:inherit}
 
 /* ─── LOGIN ─── */
@@ -41,8 +42,8 @@ button{cursor:pointer;border:none;font-family:inherit}
 .login-error{color:var(--red);font-size:13px;margin-top:12px}
 
 /* ─── APP LAYOUT ─── */
-#app{display:none;flex-direction:column;height:100vh}
-header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+#app{display:none;flex-direction:column;height:100vh;height:100dvh;height:-webkit-fill-available}
+header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;background:var(--surface);border-bottom:2px solid var(--accent);flex-shrink:0;z-index:10}
 .logo{font-weight:700;font-size:18px;color:var(--accent);margin-right:8px}
 .salon-tabs{display:flex;gap:4px;flex:1}
 .salon-tab{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:500;background:transparent;color:var(--muted);transition:.15s}
