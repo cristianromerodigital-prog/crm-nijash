@@ -1,0 +1,6 @@
+webhook/node_modules/
+webhook/.env
+webhook/firebase-service-account.json
+*.log
+.DS_Store
+Thumbs.db

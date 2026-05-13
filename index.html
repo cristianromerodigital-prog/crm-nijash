@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM — Salones de Eventos</title>
+<link rel="manifest" href="/manifest.json"/>
+<meta name="theme-color" content="#c9a84c"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="CRM Salones"/>
+<link rel="apple-touch-icon" href="/icons/icon-192.png"/>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0905;--surface:#141209;--surface2:#1e1a10;--border:#2e280f;
+  --text:#f5edd6;--muted:#9a8a5a;--subtle:#5a4f2e;
+  --accent:#c9a84c;--accent-h:#b8912e;
+  --green:#6abf6a;--yellow:#e8c040;--red:#cf5050;--purple:#9b72cf;--cyan:#4ab8c8;
+}
+/* scrollbar dorado */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+button{cursor:pointer;border:none;font-family:inherit}
+
+/* ─── LOGIN ─── */
+#loginScreen{display:flex;align-items:center;justify-content:center;height:100vh;background:var(--bg)}
+.login-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:40px;width:360px;text-align:center}
+.login-box h1{font-size:22px;margin-bottom:4px}
+.login-box p{color:var(--muted);font-size:13px;margin-bottom:32px}
+.login-box input{width:100%;padding:11px 14px;background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;margin-bottom:12px;outline:none}
+.login-box input:focus{border-color:var(--accent)}
+.login-box .btn-login{width:100%;padding:11px;background:var(--accent);color:#fff;border-radius:8px;font-size:14px;font-weight:600;transition:.15s}
+.login-box .btn-login:hover{background:var(--accent-h)}
+.login-error{color:var(--red);font-size:13px;margin-top:12px}
+
+/* ─── APP LAYOUT ─── */
+#app{display:none;flex-direction:column;height:100vh}
+header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0;z-index:10}
+.logo{font-weight:700;font-size:18px;color:var(--accent);margin-right:8px}
+.salon-tabs{display:flex;gap:4px;flex:1}
+.salon-tab{padding:6px 16px;border-radius:20px;font-size:13px;font-weight:500;background:transparent;color:var(--muted);transition:.15s}
+.salon-tab.active{background:var(--accent);color:#fff}
+.header-right{display:flex;align-items:center;gap:12px;margin-left:auto}
+.user-name{font-size:13px;color:var(--muted)}
+.btn-icon{width:32px;height:32px;border-radius:50%;background:var(--surface2);color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s}
+.btn-icon:hover{background:var(--border);color:var(--text)}
+
+/* ─── KANBAN ─── */
+#kanban{display:flex;gap:12px;padding:16px;overflow-x:auto;flex:1;align-items:flex-start}
+#kanban::-webkit-scrollbar{height:6px}
+#kanban::-webkit-scrollbar-track{background:transparent}
+#kanban::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+.stage-col{min-width:260px;max-width:260px;background:var(--surface);border-radius:12px;display:flex;flex-direction:column;max-height:100%}
+.stage-header{display:flex;align-items:center;gap:8px;padding:12px 14px;border-bottom:1px solid var(--border);flex-shrink:0}
+.stage-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.stage-name{font-size:12px;font-weight:600;flex:1;line-height:1.3}
+.stage-count{font-size:11px;background:var(--surface2);color:var(--muted);border-radius:20px;padding:2px 8px;font-weight:600}
+.stage-cards{padding:8px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;flex:1}
+.stage-cards::-webkit-scrollbar{width:4px}
+.stage-cards::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+
+/* ─── LEAD CARD ─── */
+.lead-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;cursor:pointer;transition:.15s}
+.lead-card:hover{border-color:var(--accent);transform:translateY(-1px)}
+.card-top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.source-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.source-wa{background:#25d366;color:#fff}
+.source-ig{background:linear-gradient(45deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);color:#fff}
+.source-fb{background:#1877f2;color:#fff}
+.card-name{font-size:13px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-event{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.card-event span{background:var(--surface);border-radius:4px;padding:2px 6px}
+.card-preview{font-size:11px;color:var(--subtle);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-footer{display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+.card-time{font-size:10px;color:var(--subtle)}
+.card-assigned{width:20px;height:20px;border-radius:50%;background:var(--accent);color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.add-lead-card{border:1px dashed var(--border);background:transparent;color:var(--subtle);font-size:12px;padding:10px;border-radius:8px;width:100%;display:flex;align-items:center;justify-content:center;gap:6px;transition:.15s}
+.add-lead-card:hover{border-color:var(--accent);color:var(--accent)}
+
+/* ─── LEAD PANEL ─── */
+#leadPanel{position:fixed;right:0;top:0;bottom:0;width:480px;background:var(--surface);border-left:1px solid var(--border);display:flex;flex-direction:column;transform:translateX(100%);transition:transform .25s ease;z-index:100}
+#leadPanel.open{transform:translateX(0)}
+.panel-head{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.panel-source{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.panel-name{font-size:15px;font-weight:600;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.panel-stage-sel{font-size:11px;padding:4px 10px;border-radius:20px;color:#fff;font-weight:600;cursor:pointer;border:none;font-family:inherit;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btn-close-panel{width:28px;height:28px;border-radius:50%;background:var(--surface2);color:var(--muted);font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.btn-close-panel:hover{background:var(--border)}
+.panel-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0}
+.p-tab{flex:1;padding:10px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border-bottom:2px solid transparent;transition:.15s}
+.p-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.panel-body{flex:1;overflow:hidden;display:flex;flex-direction:column}
+
+/* ─── CHAT TAB ─── */
+#tabChat{display:flex;flex-direction:column;flex:1;overflow:hidden}
+.msg-list{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px}
+.msg-list::-webkit-scrollbar{width:4px}
+.msg-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.msg{max-width:80%;display:flex;flex-direction:column;gap:2px}
+.msg.out{align-self:flex-end;align-items:flex-end}
+.msg.in{align-self:flex-start;align-items:flex-start}
+.msg-bubble{padding:8px 12px;border-radius:14px;font-size:13px;line-height:1.5;white-space:pre-wrap;word-break:break-word}
+.msg.in .msg-bubble{background:var(--surface2);border-radius:14px 14px 14px 2px}
+.msg.out .msg-bubble{background:var(--accent);color:#fff;border-radius:14px 14px 2px 14px}
+.msg-meta{font-size:10px;color:var(--subtle)}
+.chat-input-area{padding:12px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+.chat-input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:10px 12px;color:var(--text);font-size:13px;font-family:inherit;resize:none;max-height:120px;outline:none;line-height:1.4}
+.chat-input:focus{border-color:var(--accent)}
+.btn-send{width:36px;height:36px;background:var(--accent);color:#fff;border-radius:50%;font-size:16px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.btn-send:hover{background:var(--accent-h)}
+.chat-note{font-size:11px;color:var(--subtle);padding:8px 16px 0;text-align:center}
+
+/* ─── INFO TAB ─── */
+#tabInfo{display:none;padding:16px;overflow-y:auto;flex:1}
+#tabInfo::-webkit-scrollbar{width:4px}
+#tabInfo::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.info-row{margin-bottom:14px}
+.info-label{font-size:11px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.info-input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none}
+.info-input:focus{border-color:var(--accent)}
+select.info-input option{background:var(--surface2)}
+.info-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.btn-save-info{width:100%;padding:10px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;margin-top:8px;transition:.15s}
+.btn-save-info:hover{background:var(--accent-h)}
+.save-ok{font-size:12px;color:var(--green);text-align:center;margin-top:6px;opacity:0;transition:.3s}
+
+/* ─── TASKS TAB ─── */
+#tabTasks{display:none;padding:16px;overflow-y:auto;flex:1;flex-direction:column}
+.task-list{display:flex;flex-direction:column;gap:8px;margin-bottom:16px}
+.task-item{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;align-items:flex-start;gap:10px}
+.task-check{width:18px;height:18px;border-radius:50%;border:2px solid var(--border);flex-shrink:0;margin-top:1px;cursor:pointer;transition:.15s;display:flex;align-items:center;justify-content:center;font-size:11px}
+.task-check.done{background:var(--green);border-color:var(--green);color:#fff}
+.task-content{flex:1}
+.task-text{font-size:13px;margin-bottom:2px}
+.task-date{font-size:11px;color:var(--muted)}
+.task-del{color:var(--subtle);font-size:14px;cursor:pointer;padding:2px 4px;transition:.15s}
+.task-del:hover{color:var(--red)}
+.add-task-form{border-top:1px solid var(--border);padding-top:16px}
+.add-task-form input{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;font-family:inherit;outline:none;margin-bottom:8px}
+.add-task-form input:focus{border-color:var(--accent)}
+.add-task-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+.btn-add-task{padding:8px 16px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;transition:.15s}
+.btn-add-task:hover{background:var(--accent-h)}
+
+/* ─── TEMPLATES TAB ─── */
+#tabTemplates{display:none;padding:12px;overflow-y:auto;flex:1}
+#tabTemplates::-webkit-scrollbar{width:4px}
+#tabTemplates::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tpl-category{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:12px 0 8px}
+.tpl-card{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px;cursor:pointer;transition:.15s;position:relative}
+.tpl-card:hover{border-color:var(--accent)}
+.tpl-title{font-size:12px;font-weight:600;margin-bottom:4px;color:var(--text)}
+.tpl-preview{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-right:40px}
+.tpl-copy{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--subtle);transition:.15s}
+.tpl-card:hover .tpl-copy{color:var(--accent)}
+.tpl-copied{color:var(--green)!important}
+
+/* ─── ADD LEAD MODAL ─── */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;display:none}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;width:440px;max-width:95vw;max-height:90vh;overflow-y:auto}
+.modal-box h2{font-size:17px;margin-bottom:20px}
+.modal-box .info-row{margin-bottom:12px}
+.modal-actions{display:flex;gap:10px;margin-top:20px}
+.btn-cancel{flex:1;padding:10px;background:var(--surface2);color:var(--muted);border-radius:8px;font-size:13px;font-weight:600;transition:.15s}
+.btn-cancel:hover{background:var(--border)}
+.btn-confirm{flex:1;padding:10px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;transition:.15s}
+.btn-confirm:hover{background:var(--accent-h)}
+
+/* ─── FAB ─── */
+#fabAdd{position:fixed;bottom:24px;right:24px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;font-size:26px;box-shadow:0 4px 20px rgba(99,102,241,.5);display:flex;align-items:center;justify-content:center;z-index:50;transition:.15s}
+#fabAdd:hover{background:var(--accent-h);transform:scale(1.08)}
+
+/* ─── ADMIN MODAL ─── */
+#adminModal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:400;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+#adminModal.open{display:flex}
+.admin-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;width:600px;max-width:100%;margin:auto}
+.admin-head{display:flex;align-items:center;padding:18px 20px;border-bottom:1px solid var(--border)}
+.admin-head h2{font-size:16px;flex:1}
+.admin-tabs{display:flex;border-bottom:1px solid var(--border)}
+.admin-tab{flex:1;padding:11px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border-bottom:2px solid transparent;transition:.15s}
+.admin-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.admin-body{padding:20px}
+/* Stages */
+.stage-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.stage-row-dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;cursor:pointer;border:2px solid transparent}
+.stage-row-name{flex:1;background:transparent;border:none;color:var(--text);font-size:13px;font-family:inherit;outline:none;min-width:0}
+.stage-row-name:focus{border-bottom:1px solid var(--accent)}
+.stage-row-color{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--bg);cursor:pointer;padding:2px;flex-shrink:0}
+.stage-move{background:transparent;color:var(--subtle);font-size:16px;padding:2px 4px;transition:.15s;flex-shrink:0}
+.stage-move:hover{color:var(--text)}
+.stage-del{background:transparent;color:var(--subtle);font-size:14px;padding:2px 6px;transition:.15s;flex-shrink:0}
+.stage-del:hover{color:var(--red)}
+.btn-add-stage{width:100%;padding:9px;border:1px dashed var(--border);background:transparent;color:var(--muted);border-radius:8px;font-size:13px;margin-top:8px;transition:.15s}
+.btn-add-stage:hover{border-color:var(--accent);color:var(--accent)}
+.admin-save{width:100%;padding:10px;background:var(--accent);color:#fff;border-radius:8px;font-size:13px;font-weight:600;margin-top:16px;transition:.15s}
+.admin-save:hover{background:var(--accent-h)}
+/* Templates admin */
+.tpl-admin-cat{display:flex;align-items:center;gap:8px;margin-bottom:8px;margin-top:14px}
+.tpl-admin-cat input{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:12px;font-weight:700;font-family:inherit;outline:none}
+.tpl-admin-row{display:flex;gap:8px;margin-bottom:6px;align-items:flex-start}
+.tpl-admin-row input,.tpl-admin-row textarea{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:12px;font-family:inherit;outline:none}
+.tpl-admin-row input{width:140px;flex-shrink:0}
+.tpl-admin-row textarea{flex:1;resize:vertical;min-height:50px}
+/* Users admin */
+.user-row{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.user-info-col{flex:1}
+.user-name-r{font-size:13px;font-weight:600}
+.user-email-r{font-size:11px;color:var(--muted)}
+.user-role{font-size:11px;padding:3px 8px;border-radius:20px;background:var(--surface);color:var(--muted);border:1px solid var(--border)}
+
+/* ─── RESPONSIVE ─── */
+@media(max-width:768px){
+  #leadPanel{width:100vw}
+  #fabAdd{bottom:16px;right:16px}
+  .admin-box{width:100%}
+
+  /* Mobile: kanban en modo carrusel de una columna por vez */
+  #kanban{
+    scroll-snap-type:x mandatory;
+    -webkit-overflow-scrolling:touch;
+    padding:12px 0;
+    gap:0;
+  }
+  .stage-col{
+    scroll-snap-align:start;
+    min-width:100vw;
+    max-width:100vw;
+    border-radius:0;
+    border-left:none;
+    border-right:none;
+    border-top:none;
+    border-bottom:none;
+    border-left:3px solid var(--border);
+  }
+  /* Indicador de etapa activa */
+  #stageIndicator{
+    display:flex;
+    justify-content:center;
+    gap:5px;
+    padding:8px 0;
+    background:var(--surface);
+    border-bottom:1px solid var(--border);
+    flex-shrink:0;
+    overflow-x:auto;
+    scrollbar-width:none;
+  }
+  #stageIndicator::-webkit-scrollbar{display:none}
+  .stage-pip{
+    width:6px;height:6px;border-radius:50%;
+    background:var(--border);flex-shrink:0;transition:.2s;cursor:pointer;
+  }
+  .stage-pip.active{width:18px;border-radius:3px;}
+}
+@media(min-width:769px){
+  #stageIndicator{display:none!important}
+}
+
+/* ─── STAGE CHANGE MODAL ─── */
+#stageModal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:300;display:none;align-items:center;justify-content:center}
+#stageModal.open{display:flex}
+.stage-picker{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px;width:320px;max-height:80vh;overflow-y:auto}
+.stage-picker h3{font-size:14px;margin-bottom:14px;color:var(--muted)}
+.stage-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;font-size:13px}
+.stage-option:hover{background:var(--surface2)}
+.stage-option .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+</style>
+</head>
+<body>
+
+<!-- ─── LOGIN ─── -->
+<div id="loginScreen">
+  <div class="login-box">
+    <h1>CRM Salones</h1>
+    <p>Ingresá con tu cuenta</p>
+    <input type="email" id="loginEmail" placeholder="Email" autocomplete="email"/>
+    <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
+    <button class="btn-login" onclick="doLogin()">Ingresar</button>
+    <div class="login-error" id="loginErr"></div>
+    <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
+      <strong style="color:#6366f1">Modo Demo</strong><br>
+      mariano@crm.com / palacio123<br>
+      clarri@crm.com &nbsp;/ palacio123<br>
+      mel@crm.com &nbsp;&nbsp;&nbsp;&nbsp;/ palacio123<br>
+      demo@crm.com &nbsp;&nbsp;/ demo1234
+    </div>
+  </div>
+</div>
+
+<!-- ─── APP ─── -->
+<div id="app">
+  <header>
+    <div class="logo" style="font-size:14px;letter-spacing:.5px;display:flex;flex-direction:column;line-height:1.1">
+      <span style="font-size:16px;font-weight:800;color:var(--accent)">NIJASH</span>
+      <span style="font-size:9px;font-weight:500;color:var(--muted);letter-spacing:2px">CRM · EVENTOS</span>
+    </div>
+    <div class="salon-tabs">
+      <button class="salon-tab active" data-salon="palacio" onclick="setSalon('palacio')">🏛 Palacio</button>
+      <button class="salon-tab" data-salon="complejo" onclick="setSalon('complejo')">🌅 Complejo</button>
+    </div>
+    <div class="header-right">
+      <span class="user-name" id="headerUser"></span>
+      <button class="btn-icon" id="btnAdmin" onclick="openAdmin()" title="Configuración" style="display:none">⚙</button>
+      <button class="btn-icon" onclick="doLogout()" title="Cerrar sesión">⎋</button>
+    </div>
+  </header>
+  <div id="stageIndicator"></div>
+  <div id="kanban"></div>
+</div>
+
+<!-- ─── LEAD PANEL ─── -->
+<div id="leadPanel">
+  <div class="panel-head">
+    <div class="panel-source" id="panelSource"></div>
+    <div class="panel-name" id="panelName"></div>
+    <button class="panel-stage-sel" id="panelStageSel" onclick="openStageModal()"></button>
+    <button class="btn-close-panel" onclick="closePanel()">×</button>
+  </div>
+  <div class="panel-tabs">
+    <button class="p-tab active" onclick="switchTab('chat')">💬 Conversación</button>
+    <button class="p-tab" onclick="switchTab('info')">📋 Info</button>
+    <button class="p-tab" onclick="switchTab('tasks')">✅ Tareas</button>
+    <button class="p-tab" onclick="switchTab('templates')">📝 Plantillas</button>
+  </div>
+  <div class="panel-body">
+    <!-- CHAT -->
+    <div id="tabChat">
+      <div class="chat-note" id="chatNote"></div>
+      <div class="msg-list" id="msgList"></div>
+      <div class="chat-input-area">
+        <textarea class="chat-input" id="chatInput" rows="1" placeholder="Escribir mensaje..." onkeydown="chatKeydown(event)" oninput="autoResize(this)"></textarea>
+        <button class="btn-send" onclick="sendMessage()">▲</button>
+      </div>
+    </div>
+    <!-- INFO -->
+    <div id="tabInfo">
+      <div class="info-row">
+        <div class="info-label">Nombre</div>
+        <input class="info-input" id="infoName" placeholder="Nombre completo"/>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Teléfono / WhatsApp</div>
+        <input class="info-input" id="infoPhone" placeholder="+54 9 11 0000-0000"/>
+      </div>
+      <div class="info-2col">
+        <div class="info-row">
+          <div class="info-label">Tipo de evento</div>
+          <select class="info-input" id="infoType">
+            <option value="">Seleccionar</option>
+            <option>Boda</option>
+            <option>15 años</option>
+            <option>Corporativo</option>
+            <option>Bautismo</option>
+            <option>Cumpleaños</option>
+            <option>Otro</option>
+          </select>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Año del evento</div>
+          <select class="info-input" id="infoYear">
+            <option value="">Año</option>
+            <option>2025</option>
+            <option>2026</option>
+            <option>2027</option>
+            <option>2028</option>
+            <option>2029</option>
+          </select>
+        </div>
+      </div>
+      <div class="info-2col">
+        <div class="info-row">
+          <div class="info-label">Fecha aproximada</div>
+          <input class="info-input" id="infoDate" type="date"/>
+        </div>
+        <div class="info-row">
+          <div class="info-label">Invitados</div>
+          <input class="info-input" id="infoGuests" type="number" placeholder="0"/>
+        </div>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Origen</div>
+        <select class="info-input" id="infoSource">
+          <option value="whatsapp">WhatsApp</option>
+          <option value="instagram">Instagram</option>
+          <option value="facebook">Facebook</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Asignado a</div>
+        <select class="info-input" id="infoAssigned">
+          <option value="">Sin asignar</option>
+          <option>Mariano</option>
+          <option>Clarri</option>
+          <option>Mel</option>
+          <option>Leila</option>
+          <option>Nico</option>
+        </select>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Notas internas</div>
+        <textarea class="info-input" id="infoNotes" rows="4" style="resize:vertical" placeholder="Observaciones, preferencias, contexto..."></textarea>
+      </div>
+      <button class="btn-save-info" onclick="saveInfo()">Guardar cambios</button>
+      <div class="save-ok" id="saveOk">✓ Guardado</div>
+    </div>
+    <!-- TASKS -->
+    <div id="tabTasks" style="display:none;flex-direction:column">
+      <div style="padding:12px 16px;flex:1;overflow-y:auto">
+        <div class="task-list" id="taskList"></div>
+        <div class="add-task-form">
+          <input id="taskText" placeholder="Descripción de la tarea..."/>
+          <div class="add-task-row">
+            <input id="taskDate" type="datetime-local"/>
+            <button class="btn-add-task" onclick="addTask()">+ Agregar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- TEMPLATES -->
+    <div id="tabTemplates" style="display:none">
+      <div id="templatesList"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── STAGE PICKER MODAL ─── -->
+<div id="stageModal">
+  <div class="stage-picker">
+    <h3>Cambiar etapa</h3>
+    <div id="stageOptions"></div>
+  </div>
+</div>
+
+<!-- ─── ADMIN MODAL ─── -->
+<div id="adminModal">
+  <div class="admin-box">
+    <div class="admin-head">
+      <h2>⚙ Configuración</h2>
+      <button class="btn-close-panel" onclick="closeAdmin()">×</button>
+    </div>
+    <div class="admin-tabs">
+      <button class="admin-tab active" onclick="switchAdminTab('stages')">📋 Etapas del flujo</button>
+      <button class="admin-tab" onclick="switchAdminTab('templates')">📝 Plantillas</button>
+      <button class="admin-tab" onclick="switchAdminTab('users')">👥 Usuarios</button>
+    </div>
+    <div class="admin-body" id="adminBody"></div>
+  </div>
+</div>
+
+<!-- ─── ADD LEAD MODAL ─── -->
+<div class="modal-overlay" id="addLeadModal">
+  <div class="modal-box">
+    <h2>Nuevo Lead</h2>
+    <div class="info-row">
+      <div class="info-label">Nombre</div>
+      <input class="info-input" id="newName" placeholder="Nombre completo"/>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Teléfono / WhatsApp</div>
+      <input class="info-input" id="newPhone" placeholder="+54 9 11 0000-0000"/>
+    </div>
+    <div class="info-2col">
+      <div class="info-row">
+        <div class="info-label">Tipo de evento</div>
+        <select class="info-input" id="newType">
+          <option value="">Seleccionar</option>
+          <option>Boda</option>
+          <option>15 años</option>
+          <option>Corporativo</option>
+          <option>Bautismo</option>
+          <option>Cumpleaños</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="info-row">
+        <div class="info-label">Año</div>
+        <select class="info-input" id="newYear">
+          <option value="">Año</option>
+          <option>2025</option>
+          <option>2026</option>
+          <option>2027</option>
+          <option>2028</option>
+          <option>2029</option>
+        </select>
+      </div>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Origen</div>
+      <select class="info-input" id="newSource">
+        <option value="whatsapp">WhatsApp</option>
+        <option value="instagram">Instagram</option>
+        <option value="facebook">Facebook</option>
+        <option value="otro">Otro</option>
+      </select>
+    </div>
+    <div class="info-row">
+      <div class="info-label">Etapa inicial</div>
+      <select class="info-input" id="newStage"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAddLead()">Cancelar</button>
+      <button class="btn-confirm" onclick="createLead()">Crear Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── FAB ─── -->
+<button id="fabAdd" onclick="openAddLead()" title="Nuevo lead">+</button>
+
+<script>
+// ════════════════════════════════════════════════════════════
+// CONFIGURACIÓN FIREBASE — reemplazá con tus credenciales
+// ════════════════════════════════════════════════════════════
+const FIREBASE_CONFIG = {
+  apiKey: "TU_API_KEY",
+  authDomain: "TU_PROJECT.firebaseapp.com",
+  projectId: "TU_PROJECT_ID",
+  storageBucket: "TU_PROJECT.appspot.com",
+  messagingSenderId: "TU_SENDER_ID",
+  appId: "TU_APP_ID"
+};
+
+// ════════════════════════════════════════════════════════════
+// ETAPAS
+// ════════════════════════════════════════════════════════════
+const STAGES = [
+  { id:'falta_whatsapp',      label:'Falta WhatsApp',          color:'#dc2626' },
+  { id:'falta_datos',         label:'Falta datos del evento',  color:'#ea580c' },
+  { id:'presupuesto_enviado', label:'Presupuesto enviado',     color:'#d97706' },
+  { id:'quiere_visitar',      label:'Quiere visitar',          color:'#2563eb' },
+  { id:'pendiente_visita',    label:'Pendiente de visita',     color:'#1d4ed8' },
+  { id:'reagendar',           label:'Reagendar visita',        color:'#7c3aed' },
+  { id:'visito_26',           label:'Visitó el salón 2026',   color:'#059669' },
+  { id:'visito_27',           label:'Visitó el salón 2027',   color:'#047857' },
+  { id:'visito_28',           label:'Visitó el salón 2028',   color:'#065f46' },
+  { id:'negociacion',         label:'Negociación para cierre', color:'#0d9488' },
+  { id:'contrato_pendiente',  label:'Contrato pendiente',      color:'#0891b2' },
+  { id:'clientes_actuales',   label:'Clientes actuales',       color:'#16a34a' },
+  { id:'lead_perdido',        label:'Lead perdido',            color:'#6b7280' },
+];
+
+// ════════════════════════════════════════════════════════════
+// PLANTILLAS
+// ════════════════════════════════════════════════════════════
+const TEMPLATES = [
+  { cat:'Mel — Inicial', items:[
+    { title:'Bienvenida inicial', text:'¡Hola! 😊 Soy Mel, ejecutiva de cuenta en Palacio. Gracias por tu mensaje. Para poder enviarte toda la información, necesitamos algunos datos de tu evento. ¿Me contás un poco más?' },
+    { title:'Pedir datos del evento', text:'Para armar tu presupuesto personalizado necesito:\n\n📅 Fecha tentativa del evento\n👥 Cantidad aproximada de invitados\n🎉 Tipo de evento (boda, 15 años, etc.)\n📆 Año del evento\n\n¡Muchas gracias!' },
+    { title:'Presupuesto enviado', text:'¡Hola! Te enviamos la propuesta por WhatsApp. Cualquier consulta sobre el presupuesto, estamos a disposición. 🙌' },
+  ]},
+  { cat:'Clarri — Visitas', items:[
+    { title:'Confirmar visita', text:'¡Hola! ¿Cómo estás? Nos alegra mucho que quieran conocer el salón. Soy Clarri. Los podemos recibir:\n\n📅 Martes a viernes de 16:00 a 19:00 hs\n\n¿Qué día les queda mejor?' },
+    { title:'Dirección Palacio', text:'📍 La dirección de Palacio es:\n[DIRECCIÓN COMPLETA]\n\nCualquier consulta para llegar, avisanos. ¡Los esperamos!' },
+    { title:'Recordatorio visita', text:'¡Hola! Te recordamos que hoy a las [HORA] los esperamos en el salón para la visita. ¡Cualquier novedad avisanos! 😊' },
+    { title:'No vino — Reagendar', text:'¡Hola! Notamos que no pudieron venir hoy. No hay problema, podemos reagendar para cuando les venga mejor. ¿Cuándo les queda bien?' },
+  ]},
+  { cat:'Mariano — Negociación', items:[
+    { title:'Seguimiento post-visita', text:'¡Hola! ¿Cómo les fue? Esperamos que el salón les haya gustado. Si tienen alguna duda sobre el presupuesto o querrían ajustar algo, estamos para ayudarlos. 🤝' },
+    { title:'Cerrar trato', text:'¡Hola! Quería saber si pudieron evaluar la propuesta y si tienen alguna pregunta antes de tomar la decisión. Quedo a disposición 😊' },
+    { title:'Contrato listo', text:'¡Excelente noticia! Podemos preparar el contrato. ¿Cuándo les viene bien pasar a firmarlo? 📝' },
+  ]},
+  { cat:'Leila — Clientes', items:[
+    { title:'Bienvenida cliente', text:'¡Hola! Soy Leila, tu coordinadora de eventos. A partir de ahora seré tu punto de contacto para todo lo relacionado al salón. ¡Estamos súper contentos de organizarlo juntos! 🎊' },
+    { title:'Recordatorio reunión', text:'¡Hola! Te recuerdo que mañana tenemos reunión a las [HORA] en [LUGAR]. ¡Nos vemos! 😊' },
+    { title:'CBU para seña', text:'Para realizar el pago de la seña, estos son nuestros datos:\n\n🏦 Banco: [BANCO]\n📋 CBU: [CBU]\n👤 Titular: [NOMBRE]\nCUIT/CUIL: [CUIL]\n\n¡Avisanos cuando realices la transferencia! 🙏' },
+  ]},
+];
+
+// ════════════════════════════════════════════════════════════
+// ESTADO GLOBAL
+// ════════════════════════════════════════════════════════════
+let db, auth;
+let currentSalon = 'palacio';
+let currentLeadId = null;
+let leadsData = {};
+let unsubLeads = null;
+let unsubMessages = null;
+let unsubTasks = null;
+
+// ════════════════════════════════════════════════════════════
+// PERSISTENCIA EN LOCALSTORAGE
+// ════════════════════════════════════════════════════════════
+const LS_STAGES    = 'crm_stages';
+const LS_TEMPLATES = 'crm_templates';
+const LS_USERS     = 'crm_users';
+
+function loadStages() {
+  try {
+    const saved = localStorage.getItem(LS_STAGES);
+    if (saved) return JSON.parse(saved);
+  } catch(_) {}
+  return null;
+}
+function saveStages(stages) { localStorage.setItem(LS_STAGES, JSON.stringify(stages)); }
+
+function loadTemplates() {
+  try {
+    const saved = localStorage.getItem(LS_TEMPLATES);
+    if (saved) return JSON.parse(saved);
+  } catch(_) {}
+  return null;
+}
+function saveTemplates(tpls) { localStorage.setItem(LS_TEMPLATES, JSON.stringify(tpls)); }
+
+function loadUsers() {
+  try {
+    const saved = localStorage.getItem(LS_USERS);
+    if (saved) return JSON.parse(saved);
+  } catch(_) {}
+  return null;
+}
+function saveUsers(users) { localStorage.setItem(LS_USERS, JSON.stringify(users)); }
+
+// ════════════════════════════════════════════════════════════
+// USUARIOS DEMO (hardcoded, sin base de datos)
+// ════════════════════════════════════════════════════════════
+const DEMO_USERS = [
+  { email: 'mariano@crm.com',  pass: 'palacio123', name: 'Mariano' },
+  { email: 'clarri@crm.com',   pass: 'palacio123', name: 'Clarri'  },
+  { email: 'mel@crm.com',      pass: 'palacio123', name: 'Mel'     },
+  { email: 'leila@crm.com',    pass: 'palacio123', name: 'Leila'   },
+  { email: 'nico@crm.com',     pass: 'palacio123', name: 'Nico'    },
+  { email: 'demo@crm.com',     pass: 'demo1234',   name: 'Demo'    },
+];
+
+// ════════════════════════════════════════════════════════════
+// FIREBASE INIT
+// ════════════════════════════════════════════════════════════
+function initFirebase() {
+  const isDemo = FIREBASE_CONFIG.apiKey === 'TU_API_KEY';
+  if (isDemo) {
+    console.info('Modo demo activo — sin base de datos');
+    initDemoMode();
+    document.getElementById('demoHint').style.display = 'block';
+    return;
+  }
+  try {
+    firebase.initializeApp(FIREBASE_CONFIG);
+    db   = firebase.firestore();
+    auth = firebase.auth();
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        document.getElementById('loginScreen').style.display = 'none';
+        document.getElementById('app').style.display = 'flex';
+        document.getElementById('fabAdd').style.display = 'flex';
+        document.getElementById('headerUser').textContent = user.email.split('@')[0];
+        startApp();
+      } else {
+        document.getElementById('loginScreen').style.display = 'flex';
+        document.getElementById('app').style.display = 'none';
+        document.getElementById('fabAdd').style.display = 'none';
+      }
+    });
+  } catch(e) {
+    console.warn('Firebase error. Modo demo activo.');
+    initDemoMode();
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════════
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const err   = document.getElementById('loginErr');
+  err.textContent = '';
+
+  // Demo mode: validar contra usuarios hardcodeados
+  if (window._demoMode) {
+    const user = DEMO_USERS.find(u => u.email === email && u.pass === pass);
+    if (!user) { err.textContent = 'Email o contraseña incorrectos'; return; }
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('fabAdd').style.display = 'flex';
+    document.getElementById('headerUser').textContent = user.name;
+    checkAdminAccess(user.name);
+    startApp();
+    return;
+  }
+
+  try {
+    await auth.signInWithEmailAndPassword(email, pass);
+  } catch(e) {
+    err.textContent = 'Email o contraseña incorrectos';
+  }
+}
+
+async function doLogout() {
+  if (unsubLeads) unsubLeads();
+  await auth.signOut();
+}
+
+document.getElementById('loginPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+// ════════════════════════════════════════════════════════════
+// APP START
+// ════════════════════════════════════════════════════════════
+function startApp() {
+  // Cargar etapas y plantillas guardadas
+  const savedStages = loadStages();
+  if (savedStages) { STAGES.length = 0; savedStages.forEach(s => STAGES.push(s)); }
+  const savedTpls = loadTemplates();
+  if (savedTpls) { TEMPLATES.length = 0; savedTpls.forEach(t => TEMPLATES.push(t)); }
+
+  renderKanban();
+  subscribeLeads();
+  buildStageSelect('newStage');
+  buildTemplates();
+}
+
+// ════════════════════════════════════════════════════════════
+// SALON SELECTOR
+// ════════════════════════════════════════════════════════════
+function setSalon(salon) {
+  currentSalon = salon;
+  document.querySelectorAll('.salon-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.salon === salon);
+  });
+  if (unsubLeads) unsubLeads();
+  leadsData = {};
+  renderKanban();
+  subscribeLeads();
+  closePanel();
+}
+
+// ════════════════════════════════════════════════════════════
+// KANBAN RENDER
+// ════════════════════════════════════════════════════════════
+function renderKanban() {
+  const kb = document.getElementById('kanban');
+  kb.innerHTML = STAGES.map(s => `
+    <div class="stage-col" data-stage="${s.id}">
+      <div class="stage-header">
+        <div class="stage-dot" style="background:${s.color}"></div>
+        <div class="stage-name">${s.label}</div>
+        <div class="stage-count" id="cnt-${s.id}">0</div>
+      </div>
+      <div class="stage-cards" id="col-${s.id}">
+        <button class="add-lead-card" onclick="openAddLeadStage('${s.id}')">+ Agregar lead</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Indicador de pips para mobile
+  const ind = document.getElementById('stageIndicator');
+  ind.innerHTML = STAGES.map((s, i) => `
+    <div class="stage-pip" data-i="${i}" style="background:${s.color};opacity:.4" onclick="scrollToStage(${i})" title="${s.label}"></div>
+  `).join('');
+
+  // Actualizar pip activo al hacer scroll
+  kb.addEventListener('scroll', updateActivePip, { passive:true });
+  updateActivePip();
+}
+
+function scrollToStage(i) {
+  const kb = document.getElementById('kanban');
+  const cols = kb.querySelectorAll('.stage-col');
+  if (cols[i]) cols[i].scrollIntoView({ behavior:'smooth', block:'nearest', inline:'start' });
+}
+
+function updateActivePip() {
+  const kb = document.getElementById('kanban');
+  const cols = kb.querySelectorAll('.stage-col');
+  const scrollLeft = kb.scrollLeft;
+  const colW = cols[0]?.offsetWidth || 260;
+  const activeIdx = Math.round(scrollLeft / colW);
+  document.querySelectorAll('.stage-pip').forEach((pip, i) => {
+    const s = STAGES[i];
+    pip.style.opacity = i === activeIdx ? '1' : '.35';
+    pip.classList.toggle('active', i === activeIdx);
+    pip.style.background = s?.color || 'var(--border)';
+  });
+}
+
+function renderCards() {
+  STAGES.forEach(s => {
+    const col = document.getElementById('col-' + s.id);
+    const cnt = document.getElementById('cnt-' + s.id);
+    if (!col) return;
+    const leads = Object.values(leadsData).filter(l => l.stage === s.id);
+    cnt.textContent = leads.length;
+    // Preserve add button
+    const addBtn = col.querySelector('.add-lead-card');
+    col.innerHTML = '';
+    leads.sort((a,b) => (b.updatedAt?.seconds||0) - (a.updatedAt?.seconds||0))
+         .forEach(l => col.appendChild(buildCard(l)));
+    if (addBtn) col.appendChild(addBtn);
+  });
+}
+
+function buildCard(lead) {
+  const div = document.createElement('div');
+  div.className = 'lead-card';
+  div.onclick = () => openLead(lead.id);
+
+  const srcIcon  = sourceIcon(lead.source);
+  const srcClass = 'source-' + (lead.source||'wa');
+  const eventInfo = [lead.eventType, lead.eventYear].filter(Boolean).join(' · ');
+  const preview  = lead.lastMessage || '—';
+  const initials = (lead.assignedTo||'?').charAt(0).toUpperCase();
+  const time     = lead.updatedAt ? relTime(lead.updatedAt.toDate()) : '';
+
+  div.innerHTML = `
+    <div class="card-top">
+      <div class="source-icon ${srcClass}">${srcIcon}</div>
+      <div class="card-name">${esc(lead.name||'Sin nombre')}</div>
+    </div>
+    ${eventInfo ? `<div class="card-event"><span>${esc(eventInfo)}</span></div>` : ''}
+    <div class="card-preview">${esc(preview)}</div>
+    <div class="card-footer">
+      <div class="card-time">${time}</div>
+      ${lead.assignedTo ? `<div class="card-assigned" title="${esc(lead.assignedTo)}">${initials}</div>` : ''}
+    </div>
+  `;
+  return div;
+}
+
+function sourceIcon(src) {
+  if (src === 'instagram') return '📸';
+  if (src === 'facebook')  return 'f';
+  return '📞';
+}
+
+// ════════════════════════════════════════════════════════════
+// FIRESTORE — LEADS
+// ════════════════════════════════════════════════════════════
+function subscribeLeads() {
+  const q = db.collection('leads').where('salon', '==', currentSalon);
+  unsubLeads = q.onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'removed') {
+        delete leadsData[change.doc.id];
+      } else {
+        leadsData[change.doc.id] = { id: change.doc.id, ...change.doc.data() };
+      }
+    });
+    renderCards();
+    // Si hay un lead abierto, refrescar encabezado
+    if (currentLeadId && leadsData[currentLeadId]) {
+      updatePanelHead(leadsData[currentLeadId]);
+    }
+  });
+}
+
+async function createLead() {
+  const name   = document.getElementById('newName').value.trim();
+  if (!name) { alert('El nombre es obligatorio'); return; }
+  const data = {
+    salon:       currentSalon,
+    name,
+    phone:       document.getElementById('newPhone').value.trim(),
+    eventType:   document.getElementById('newType').value,
+    eventYear:   document.getElementById('newYear').value,
+    source:      document.getElementById('newSource').value,
+    stage:       document.getElementById('newStage').value || STAGES[0].id,
+    assignedTo:  '',
+    lastMessage: '',
+    createdAt:   firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:   firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  const ref = await db.collection('leads').add(data);
+  closeAddLead();
+  openLead(ref.id);
+}
+
+async function updateLeadStage(leadId, stageId) {
+  await db.collection('leads').doc(leadId).update({
+    stage: stageId,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// PANEL
+// ════════════════════════════════════════════════════════════
+function openLead(id) {
+  currentLeadId = id;
+  const lead = leadsData[id];
+  if (!lead) return;
+  updatePanelHead(lead);
+  fillInfoTab(lead);
+  subscribeMessages(id);
+  subscribeTasks(id);
+  switchTab('chat');
+  document.getElementById('leadPanel').classList.add('open');
+}
+
+function updatePanelHead(lead) {
+  const stage = STAGES.find(s => s.id === lead.stage) || STAGES[0];
+  const srcClass = 'source-' + (lead.source||'wa');
+  document.getElementById('panelSource').className = 'panel-source ' + srcClass;
+  document.getElementById('panelSource').textContent = sourceIcon(lead.source);
+  document.getElementById('panelName').textContent = lead.name || 'Sin nombre';
+  const sel = document.getElementById('panelStageSel');
+  sel.textContent = stage.label;
+  sel.style.background = stage.color;
+}
+
+function closePanel() {
+  document.getElementById('leadPanel').classList.remove('open');
+  if (unsubMessages) { unsubMessages(); unsubMessages = null; }
+  if (unsubTasks)    { unsubTasks();    unsubTasks = null; }
+  currentLeadId = null;
+}
+
+function switchTab(tab) {
+  ['chat','info','tasks','templates'].forEach(t => {
+    const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+    const btn = Array.from(document.querySelectorAll('.p-tab')).find(b => b.textContent.toLowerCase().includes(t));
+    if (el) el.style.display = t === tab ? (t === 'tasks' ? 'flex' : 'block') : 'none';
+    if (btn) btn.classList.toggle('active', t === tab);
+  });
+  if (tab === 'chat') document.getElementById('tabChat').style.display = 'flex';
+}
+
+// ════════════════════════════════════════════════════════════
+// MESSAGES
+// ════════════════════════════════════════════════════════════
+function subscribeMessages(leadId) {
+  if (unsubMessages) unsubMessages();
+  const q = db.collection('leads').doc(leadId).collection('messages').orderBy('createdAt');
+  const msgList = document.getElementById('msgList');
+  const note    = document.getElementById('chatNote');
+  msgList.innerHTML = '';
+
+  const lead = leadsData[leadId];
+  if (lead && lead.phone) {
+    note.textContent = lead.source === 'whatsapp'
+      ? `📱 WhatsApp: ${lead.phone}`
+      : `Canal: ${lead.source} • WA: ${lead.phone||'sin número'}`;
+  } else {
+    note.textContent = '';
+  }
+
+  unsubMessages = q.onSnapshot(snap => {
+    snap.docChanges().forEach(change => {
+      if (change.type === 'added') {
+        const msg  = change.doc.data();
+        const div  = document.createElement('div');
+        div.className = 'msg ' + (msg.direction === 'out' ? 'out' : 'in');
+        const time = msg.createdAt ? relTime(msg.createdAt.toDate()) : '';
+        div.innerHTML = `
+          <div class="msg-bubble">${esc(msg.text)}</div>
+          <div class="msg-meta">${msg.direction==='out'?(msg.author||'Vos'):''} ${time}</div>
+        `;
+        msgList.appendChild(div);
+        msgList.scrollTop = msgList.scrollHeight;
+      }
+    });
+  });
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if (!text || !currentLeadId) return;
+  input.value = '';
+  input.style.height = '';
+
+  const user = auth.currentUser;
+  const msgData = {
+    text,
+    direction: 'out',
+    author:    user ? user.email.split('@')[0] : 'Usuario',
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    channel:   'manual',
+  };
+
+  await db.collection('leads').doc(currentLeadId).collection('messages').add(msgData);
+  await db.collection('leads').doc(currentLeadId).update({
+    lastMessage: text,
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+
+  // Si la integración WhatsApp está activa, enviar via webhook
+  const lead = leadsData[currentLeadId];
+  if (lead && lead.phone && lead.waMessageId) {
+    sendWhatsAppMessage(lead.phone, text);
+  }
+}
+
+async function sendWhatsAppMessage(phone, text) {
+  // El webhook server maneja el envío real
+  // URL del servidor webhook — configurar en firebase-config o hardcodear
+  const WEBHOOK_URL = window.WEBHOOK_URL || '';
+  if (!WEBHOOK_URL) return;
+  try {
+    await fetch(WEBHOOK_URL + '/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone, text })
+    });
+  } catch(e) { console.error('Error enviando WA:', e); }
+}
+
+function chatKeydown(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    sendMessage();
+  }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+}
+
+// ════════════════════════════════════════════════════════════
+// INFO TAB
+// ════════════════════════════════════════════════════════════
+function fillInfoTab(lead) {
+  document.getElementById('infoName').value     = lead.name||'';
+  document.getElementById('infoPhone').value    = lead.phone||'';
+  document.getElementById('infoType').value     = lead.eventType||'';
+  document.getElementById('infoYear').value     = lead.eventYear||'';
+  document.getElementById('infoDate').value     = lead.eventDate||'';
+  document.getElementById('infoGuests').value   = lead.guests||'';
+  document.getElementById('infoSource').value   = lead.source||'whatsapp';
+  document.getElementById('infoAssigned').value = lead.assignedTo||'';
+  document.getElementById('infoNotes').value    = lead.notes||'';
+  document.getElementById('saveOk').style.opacity = '0';
+}
+
+async function saveInfo() {
+  if (!currentLeadId) return;
+  await db.collection('leads').doc(currentLeadId).update({
+    name:       document.getElementById('infoName').value.trim(),
+    phone:      document.getElementById('infoPhone').value.trim(),
+    eventType:  document.getElementById('infoType').value,
+    eventYear:  document.getElementById('infoYear').value,
+    eventDate:  document.getElementById('infoDate').value,
+    guests:     parseInt(document.getElementById('infoGuests').value)||0,
+    source:     document.getElementById('infoSource').value,
+    assignedTo: document.getElementById('infoAssigned').value,
+    notes:      document.getElementById('infoNotes').value,
+    updatedAt:  firebase.firestore.FieldValue.serverTimestamp(),
+  });
+  const ok = document.getElementById('saveOk');
+  ok.style.opacity = '1';
+  setTimeout(() => ok.style.opacity = '0', 2000);
+}
+
+// ════════════════════════════════════════════════════════════
+// TASKS
+// ════════════════════════════════════════════════════════════
+function subscribeTasks(leadId) {
+  if (unsubTasks) unsubTasks();
+  const q = db.collection('leads').doc(leadId).collection('tasks').orderBy('dueAt');
+  unsubTasks = q.onSnapshot(snap => {
+    const list = document.getElementById('taskList');
+    list.innerHTML = '';
+    snap.forEach(doc => {
+      const t = { id: doc.id, ...doc.data() };
+      const div = document.createElement('div');
+      div.className = 'task-item';
+      const due = t.dueAt ? new Date(t.dueAt.seconds*1000).toLocaleString('es-AR',{dateStyle:'short',timeStyle:'short'}) : '';
+      div.innerHTML = `
+        <div class="task-check ${t.done?'done':''}" onclick="toggleTask('${leadId}','${doc.id}',${!t.done})">
+          ${t.done ? '✓' : ''}
+        </div>
+        <div class="task-content">
+          <div class="task-text" style="${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</div>
+          ${due ? `<div class="task-date">📅 ${due}</div>` : ''}
+        </div>
+        <span class="task-del" onclick="deleteTask('${leadId}','${doc.id}')">✕</span>
+      `;
+      list.appendChild(div);
+    });
+  });
+}
+
+async function addTask() {
+  if (!currentLeadId) return;
+  const text = document.getElementById('taskText').value.trim();
+  if (!text) return;
+  const dateVal = document.getElementById('taskDate').value;
+  const data = {
+    text,
+    done: false,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+  };
+  if (dateVal) data.dueAt = firebase.firestore.Timestamp.fromDate(new Date(dateVal));
+  await db.collection('leads').doc(currentLeadId).collection('tasks').add(data);
+  document.getElementById('taskText').value = '';
+  document.getElementById('taskDate').value = '';
+}
+
+async function toggleTask(leadId, taskId, done) {
+  await db.collection('leads').doc(leadId).collection('tasks').doc(taskId).update({ done });
+}
+
+async function deleteTask(leadId, taskId) {
+  await db.collection('leads').doc(leadId).collection('tasks').doc(taskId).delete();
+}
+
+// ════════════════════════════════════════════════════════════
+// TEMPLATES
+// ════════════════════════════════════════════════════════════
+function buildTemplates() {
+  const container = document.getElementById('templatesList');
+  container.innerHTML = TEMPLATES.map(cat => `
+    <div class="tpl-category">${cat.cat}</div>
+    ${cat.items.map(t => `
+      <div class="tpl-card" onclick="copyTemplate(this, ${JSON.stringify(t.text).replace(/</g,'&lt;')})">
+        <div class="tpl-title">${esc(t.title)}</div>
+        <div class="tpl-preview">${esc(t.text)}</div>
+        <span class="tpl-copy">📋</span>
+      </div>
+    `).join('')}
+  `).join('');
+}
+
+function copyTemplate(el, text) {
+  navigator.clipboard.writeText(text).then(() => {
+    const icon = el.querySelector('.tpl-copy');
+    icon.textContent = '✓';
+    icon.classList.add('tpl-copied');
+    setTimeout(() => { icon.textContent = '📋'; icon.classList.remove('tpl-copied'); }, 1500);
+    // Pasar al chat con el texto
+    document.getElementById('chatInput').value = text;
+    autoResize(document.getElementById('chatInput'));
+    switchTab('chat');
+  });
+}
+
+// ════════════════════════════════════════════════════════════
+// STAGE MODAL
+// ════════════════════════════════════════════════════════════
+function openStageModal() {
+  const modal = document.getElementById('stageModal');
+  const opts  = document.getElementById('stageOptions');
+  const current = currentLeadId ? leadsData[currentLeadId]?.stage : null;
+  opts.innerHTML = STAGES.map(s => `
+    <div class="stage-option" onclick="changeStage('${s.id}')">
+      <div class="dot" style="background:${s.color}"></div>
+      <span style="${s.id === current ? 'font-weight:700;color:'+s.color : ''}">${s.label}</span>
+      ${s.id === current ? ' ✓' : ''}
+    </div>
+  `).join('');
+  modal.classList.add('open');
+}
+
+async function changeStage(stageId) {
+  document.getElementById('stageModal').classList.remove('open');
+  if (!currentLeadId) return;
+  await updateLeadStage(currentLeadId, stageId);
+}
+
+document.getElementById('stageModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('stageModal'))
+    document.getElementById('stageModal').classList.remove('open');
+});
+
+// ════════════════════════════════════════════════════════════
+// ADD LEAD MODAL
+// ════════════════════════════════════════════════════════════
+function buildStageSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  sel.innerHTML = STAGES.map(s => `<option value="${s.id}">${s.label}</option>`).join('');
+}
+
+function openAddLead() {
+  document.getElementById('addLeadModal').classList.add('open');
+  document.getElementById('newName').focus();
+}
+
+function openAddLeadStage(stageId) {
+  openAddLead();
+  document.getElementById('newStage').value = stageId;
+}
+
+function closeAddLead() {
+  document.getElementById('addLeadModal').classList.remove('open');
+  ['newName','newPhone'].forEach(id => document.getElementById(id).value = '');
+}
+
+document.getElementById('addLeadModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('addLeadModal')) closeAddLead();
+});
+
+// ════════════════════════════════════════════════════════════
+// DEMO MODE (Firebase no configurado)
+// ════════════════════════════════════════════════════════════
+function initDemoMode() {
+  window._demoMode = true;
+  // No ocultamos el login — el usuario ingresa con las credenciales demo
+
+  // Datos demo
+  const now = { toDate: () => new Date(), seconds: Date.now()/1000 };
+  const ago = (h) => ({ toDate: () => new Date(Date.now() - h*3600000), seconds: (Date.now() - h*3600000)/1000 });
+
+  leadsData = {
+    // ── FALTA WHATSAPP ──────────────────────────────────────
+    'd01': { id:'d01', salon:'palacio', name:'Camila Ríos', phone:'', source:'instagram', eventType:'Boda', eventYear:'2026', stage:'falta_whatsapp', assignedTo:'Mel', guests:150, notes:'Entró por IG, no compartió número aún', lastMessage:'Hola! Vi el salón en Instagram, me pueden dar info?', updatedAt:ago(1) },
+    'd02': { id:'d02', salon:'palacio', name:'Rodrigo Sánchez', phone:'', source:'facebook', eventType:'15 años', eventYear:'2026', stage:'falta_whatsapp', assignedTo:'Mel', guests:80, notes:'', lastMessage:'Buenas, quisiera saber disponibilidad para diciembre', updatedAt:ago(3) },
+
+    // ── FALTA DATOS ─────────────────────────────────────────
+    'd03': { id:'d03', salon:'palacio', name:'Sofía Méndez', phone:'+5491165432100', source:'whatsapp', eventType:'15 años', eventYear:'2026', stage:'falta_datos', assignedTo:'Mel', guests:0, notes:'Muy interesada, preguntó por menú', lastMessage:'Sí claro! Es para los 15 de mi hija en julio', updatedAt:ago(2) },
+    'd04': { id:'d04', salon:'complejo', name:'Martín Acosta', phone:'+5491154321009', source:'instagram', eventType:'Boda', eventYear:'2027', stage:'falta_datos', assignedTo:'Mel', guests:0, notes:'', lastMessage:'Somos 200 personas aprox, el evento es en marzo 2027', updatedAt:ago(5) },
+
+    // ── PRESUPUESTO ENVIADO ──────────────────────────────────
+    'd05': { id:'d05', salon:'palacio', name:'Florencia Gómez', phone:'+5491144567890', source:'instagram', eventType:'Boda', eventYear:'2026', stage:'presupuesto_enviado', assignedTo:'Mel', guests:180, eventDate:'2026-10-17', notes:'Le gustó mucho el salón en fotos', lastMessage:'Muchas gracias, lo voy a revisar con mi novio 💍', updatedAt:ago(6) },
+    'd06': { id:'d06', salon:'palacio', name:'Daniela Pereyra', phone:'+5491133445566', source:'whatsapp', eventType:'15 años', eventYear:'2026', stage:'presupuesto_enviado', assignedTo:'Mel', guests:120, eventDate:'2026-08-22', notes:'Quiere DJ incluido', lastMessage:'Recibido! Una consulta, el DJ está incluido en algún pack?', updatedAt:ago(10) },
+    'd07': { id:'d07', salon:'complejo', name:'Nicolás Romero', phone:'+5491122334455', source:'facebook', eventType:'Corporativo', eventYear:'2026', stage:'presupuesto_enviado', assignedTo:'Mel', guests:60, eventDate:'2026-09-05', notes:'Evento de empresa, necesita proyector', lastMessage:'Perfecto, lo consulto con mi jefe y te aviso', updatedAt:ago(18) },
+
+    // ── QUIERE VISITAR ───────────────────────────────────────
+    'd08': { id:'d08', salon:'palacio', name:'Lucía Fernández', phone:'+5491199887766', source:'facebook', eventType:'Boda', eventYear:'2027', stage:'quiere_visitar', assignedTo:'Clarri', guests:200, eventDate:'2027-04-12', notes:'Viene con sus padres', lastMessage:'Sí! Me gustaría conocer el salón, ¿cuándo podemos ir?', updatedAt:ago(4) },
+    'd09': { id:'d09', salon:'palacio', name:'Agustina Blanco', phone:'+5491188776655', source:'whatsapp', eventType:'15 años', eventYear:'2026', stage:'quiere_visitar', assignedTo:'Clarri', guests:100, eventDate:'2026-11-30', notes:'', lastMessage:'Queremos ir a ver el salón esta semana si es posible', updatedAt:ago(8) },
+
+    // ── PENDIENTE DE VISITA ──────────────────────────────────
+    'd10': { id:'d10', salon:'palacio', name:'Antonella Ruiz', phone:'+5491177665544', source:'whatsapp', eventType:'15 años', eventYear:'2026', stage:'pendiente_visita', assignedTo:'Clarri', guests:130, eventDate:'2026-09-20', notes:'Visita pactada jueves 15hs', lastMessage:'Perfecto! Confirmado para el jueves a las 15 ✅', updatedAt:ago(12) },
+    'd11': { id:'d11', salon:'complejo', name:'Tomás Gutiérrez', phone:'+5491166554433', source:'instagram', eventType:'Boda', eventYear:'2027', stage:'pendiente_visita', assignedTo:'Clarri', guests:250, eventDate:'2027-06-07', notes:'Visita viernes 17hs', lastMessage:'Dale, el viernes a las 17 nos viene perfecto 👍', updatedAt:ago(24) },
+
+    // ── REAGENDAR ────────────────────────────────────────────
+    'd12': { id:'d12', salon:'palacio', name:'Micaela Torres', phone:'+5491155443322', source:'whatsapp', eventType:'Boda', eventYear:'2026', stage:'reagendar', assignedTo:'Clarri', guests:160, eventDate:'2026-12-06', notes:'No vino, avisó que se le complicó el trabajo', lastMessage:'Disculpame! Se me complicó, ¿podemos reagendar?', updatedAt:ago(30) },
+
+    // ── VISITÓ SALÓN 2026 ────────────────────────────────────
+    'd13': { id:'d13', salon:'palacio', name:'Valentina Torres', phone:'+5491144332211', source:'instagram', eventType:'Boda', eventYear:'2026', stage:'visito_26', assignedTo:'Mariano', guests:180, eventDate:'2026-11-14', notes:'Le encantó el salón, están muy decididos', lastMessage:'Nos encantó el salón! Vamos a hablar y te avisamos 😍', updatedAt:ago(36) },
+    'd14': { id:'d14', salon:'palacio', name:'Belén Suárez', phone:'+5491133221100', source:'whatsapp', eventType:'15 años', eventYear:'2026', stage:'visito_26', assignedTo:'Mariano', guests:90, eventDate:'2026-07-19', notes:'Quiere saber si puede traer su propia torta', lastMessage:'Una pregunta: ¿podemos traer la torta de afuera?', updatedAt:ago(48) },
+    'd15': { id:'d15', salon:'complejo', name:'Joaquín Herrera', phone:'+5491122110099', source:'facebook', eventType:'Boda', eventYear:'2026', stage:'visito_26', assignedTo:'Mariano', guests:220, eventDate:'2026-10-03', notes:'', lastMessage:'Quedamos re conformes con la visita, gracias!', updatedAt:ago(50) },
+
+    // ── VISITÓ SALÓN 2027 ────────────────────────────────────
+    'd16': { id:'d16', salon:'palacio', name:'Carolina Vega', phone:'+5491111009988', source:'instagram', eventType:'Boda', eventYear:'2027', stage:'visito_27', assignedTo:'Mariano', guests:170, eventDate:'2027-03-20', notes:'Comparando con otro salón', lastMessage:'Estamos viendo opciones, en unos días te confirmo 🙏', updatedAt:ago(72) },
+
+    // ── NEGOCIACIÓN ──────────────────────────────────────────
+    'd17': { id:'d17', salon:'palacio', name:'Valeria Castillo', phone:'+5491100998877', source:'whatsapp', eventType:'Boda', eventYear:'2026', stage:'negociacion', assignedTo:'Mariano', guests:190, eventDate:'2026-09-27', notes:'Pide descuento por pago al contado', lastMessage:'Si pagamos todo de una, ¿nos pueden hacer algo en el precio?', updatedAt:ago(15) },
+    'd18': { id:'d18', salon:'palacio', name:'Emiliano Paz', phone:'+5491199887700', source:'instagram', eventType:'Boda', eventYear:'2026', stage:'negociacion', assignedTo:'Mariano', guests:140, eventDate:'2026-10-31', notes:'Quiere sumar barra libre extendida', lastMessage:'¿Cuánto sale agregar 2 horas más de barra libre?', updatedAt:ago(20) },
+
+    // ── CONTRATO PENDIENTE ───────────────────────────────────
+    'd19': { id:'d19', salon:'palacio', name:'Julieta Morales', phone:'+5491188770011', source:'whatsapp', eventType:'Boda', eventYear:'2026', stage:'contrato_pendiente', assignedTo:'Mariano', guests:160, eventDate:'2026-08-09', notes:'Viene el lunes a firmar con el novio', lastMessage:'Listo! El lunes a las 11 vamos a firmar ✅', updatedAt:ago(10) },
+
+    // ── CLIENTES ACTUALES ────────────────────────────────────
+    'd20': { id:'d20', salon:'palacio', name:'Romina Díaz', phone:'+5491177006655', source:'whatsapp', eventType:'Boda', eventYear:'2026', stage:'clientes_actuales', assignedTo:'Leila', guests:200, eventDate:'2026-06-21', notes:'Contrato firmado. Seña pagada. Reunión con Leila en 2 semanas', lastMessage:'Hola Leila! Quería consultar por el plano de mesas 🗺️', updatedAt:ago(2) },
+    'd21': { id:'d21', salon:'palacio', name:'Gonzalo Ibáñez', phone:'+5491166005544', source:'instagram', eventType:'15 años', eventYear:'2026', stage:'clientes_actuales', assignedTo:'Leila', guests:110, eventDate:'2026-07-05', notes:'Todo confirmado. Quieren velitas para la entrada', lastMessage:'Todo bien Leila! Las velitas las traemos nosotros 🕯️', updatedAt:ago(5) },
+    'd22': { id:'d22', salon:'complejo', name:'Paola Ramos', phone:'+5491155004433', source:'facebook', eventType:'Boda', eventYear:'2026', stage:'clientes_actuales', assignedTo:'Leila', guests:230, eventDate:'2026-08-30', notes:'VIP. Decoración premium acordada', lastMessage:'Perfecto! Nos vemos en la reunión de degustación 🍽️', updatedAt:ago(8) },
+
+    // ── LEAD PERDIDO ─────────────────────────────────────────
+    'd23': { id:'d23', salon:'palacio', name:'Mariana López', phone:'+5491144003322', source:'instagram', eventType:'Boda', eventYear:'2026', stage:'lead_perdido', assignedTo:'', guests:150, notes:'Cerró con otro salón', lastMessage:'Gracias por todo, finalmente elegimos otro lugar 😔', updatedAt:ago(96) },
+    'd24': { id:'d24', salon:'complejo', name:'Bruno Álvarez', phone:'+5491133002211', source:'whatsapp', eventType:'Boda', eventYear:'2025', stage:'lead_perdido', assignedTo:'', guests:100, notes:'No contestó más después de 3 seguimientos', lastMessage:'(Sin respuesta)', updatedAt:ago(200) },
+  };
+
+  // Tareas demo
+  window._demoTasks = {
+    'd10': [
+      { text:'Confirmar dirección por WhatsApp', done:true,  date:'Jue 15/05 · 10:00' },
+      { text:'Visita – Antonella y familia',     done:false, date:'Jue 15/05 · 15:00' },
+    ],
+    'd17': [
+      { text:'Consultar descuento pago contado', done:false, date:'Hoy · 17:00' },
+    ],
+    'd19': [
+      { text:'Preparar contrato – Julieta Morales', done:true,  date:'Vie 16/05 · 09:00' },
+      { text:'Firma de contrato',                   done:false, date:'Lun 19/05 · 11:00' },
+    ],
+    'd20': [
+      { text:'Enviar plano de mesas',  done:false, date:'Mar 20/05 · 15:00' },
+      { text:'Reunión previa al evento', done:false, date:'Sáb 14/06 · 11:00' },
+    ],
+  };
+
+  // Conversaciones demo por lead
+  window._demoConvs = {
+    'd01': [
+      { dir:'in',  text:'Hola! Vi el salón en Instagram, me pueden dar info? 😊', time:'hace 1h' },
+      { dir:'out', text:'¡Hola Camila! Soy Mel, ejecutiva de cuenta. Claro que sí! Para poder ayudarte mejor, ¿me podrías compartir tu número de WhatsApp?', who:'Mel', time:'hace 55m' },
+    ],
+    'd02': [
+      { dir:'in',  text:'Buenas, quisiera saber disponibilidad para diciembre', time:'hace 3h' },
+      { dir:'out', text:'¡Hola Rodrigo! Te escribimos al WhatsApp ahora. ¿Cuál es tu número?', who:'Mel', time:'hace 2h 50m' },
+    ],
+    'd03': [
+      { dir:'in',  text:'Hola! Vi que tienen el salón disponible', time:'hace 2 días' },
+      { dir:'out', text:'¡Hola Sofía! Soy Mel. Para enviarte toda la info del presupuesto, necesito algunos datos:\n\n📅 Fecha tentativa\n👥 Cantidad de invitados\n🎉 Tipo de evento\n📆 Año', who:'Mel', time:'hace 2 días' },
+      { dir:'in',  text:'Sí claro! Es para los 15 de mi hija en julio', time:'hace 2h' },
+      { dir:'out', text:'¡Qué lindo! ¿Y más o menos cuántos invitados esperan?', who:'Mel', time:'hace 1h 50m' },
+    ],
+    'd05': [
+      { dir:'in',  text:'Hola! Vi su salón en Instagram, me encantaron las fotos 😍', time:'hace 3 días' },
+      { dir:'out', text:'¡Hola Florencia! Qué alegría. Soy Mel. Para hacerte llegar el presupuesto necesito:\n📅 Fecha del evento\n👥 Invitados\n🎉 Tipo (boda, 15...)\n📆 Año', who:'Mel', time:'hace 3 días' },
+      { dir:'in',  text:'Es una boda! Octubre 2026, más o menos 180 personas', time:'hace 2 días' },
+      { dir:'out', text:'¡Hermoso! Ya te preparamos el presupuesto 2026. En breve te lo enviamos por este medio 📄', who:'Mel', time:'hace 2 días' },
+      { dir:'in',  text:'Muchas gracias, lo voy a revisar con mi novio 💍', time:'hace 6h' },
+    ],
+    'd10': [
+      { dir:'in',  text:'Hola! Quiero saber si tienen disponible para mis 15', time:'hace 4 días' },
+      { dir:'out', text:'¡Hola Antonella! Con gusto. ¿Me contás la fecha y los invitados?', who:'Mel', time:'hace 4 días' },
+      { dir:'in',  text:'20 de septiembre 2026, unas 130 personas', time:'hace 3 días' },
+      { dir:'out', text:'Perfecto! Te enviamos el presupuesto ahora 🎉', who:'Mel', time:'hace 3 días' },
+      { dir:'in',  text:'Nos copó mucho! ¿Podemos ir a verlo?', time:'hace 2 días' },
+      { dir:'out', text:'¡Claro! Soy Clarri. Los recibimos martes a viernes de 16 a 19hs. ¿Qué día les viene bien?', who:'Clarri', time:'hace 2 días' },
+      { dir:'in',  text:'El jueves a las 15 nos viene bien!', time:'hace 1 día' },
+      { dir:'out', text:'¡Genial! Quedamos para el jueves a las 15. Les mando la dirección 📍\n\nLos esperamos! 😊', who:'Clarri', time:'hace 1 día' },
+      { dir:'in',  text:'Perfecto! Confirmado para el jueves a las 15 ✅', time:'hace 12h' },
+    ],
+    'd17': [
+      { dir:'in',  text:'Buenas! Visitamos el salón la semana pasada y nos encantó', time:'hace 5 días' },
+      { dir:'out', text:'¡Hola Valeria! Qué bueno escuchar eso 😊 Soy Mariano. ¿Tienen alguna consulta sobre el presupuesto?', who:'Mariano', time:'hace 5 días' },
+      { dir:'in',  text:'Sí, una pregunta. Si pagamos todo de una, ¿nos pueden hacer algo en el precio?', time:'hace 15h' },
+      { dir:'out', text:'Entiendo! Déjame consultarlo y te respondo hoy a la tarde 🤝', who:'Mariano', time:'hace 14h' },
+    ],
+    'd19': [
+      { dir:'in',  text:'Hola Mariano! Ya decidimos, queremos reservar el salón 🎉', time:'hace 3 días' },
+      { dir:'out', text:'¡Julieta, qué noticia más linda! Los felicito 🥂 Podemos hacer el contrato cuando quieran. ¿Cuándo vienen?', who:'Mariano', time:'hace 3 días' },
+      { dir:'in',  text:'El lunes a las 11 podemos, nos viene perfecto', time:'hace 2 días' },
+      { dir:'out', text:'Anotado para el lunes a las 11. Los esperamos con todo listo para firmar 📝', who:'Mariano', time:'hace 2 días' },
+      { dir:'in',  text:'Listo! El lunes a las 11 vamos a firmar ✅', time:'hace 10h' },
+    ],
+    'd20': [
+      { dir:'in',  text:'Hola Leila! Quería consultar por el plano de mesas, ¿cuándo lo vemos?', time:'hace 2h' },
+      { dir:'out', text:'¡Hola Romina! Claro, el próximo martes en nuestra reunión lo vemos juntos 😊 Te lo preparo con las opciones de disposición', who:'Leila', time:'hace 1h 30m' },
+      { dir:'in',  text:'Hola Leila! Quería consultar por el plano de mesas 🗺️', time:'hace 2h' },
+    ],
+  };
+
+  // Mockear db para no crashear
+  db = {
+    collection: () => ({
+      where: () => ({ onSnapshot: () => {} }),
+      doc: () => ({
+        collection: () => ({
+          orderBy: () => ({ onSnapshot: cb => { cb({ docChanges: () => [], forEach: () => {} }); return () => {}; } }),
+          add: async () => {}
+        }),
+        update: async () => {}
+      }),
+      add: async (data) => {
+        const id = 'new_' + Date.now();
+        leadsData[id] = { id, ...data, updatedAt: now };
+        renderCards();
+        return { id };
+      }
+    })
+  };
+  auth = { currentUser: { email: 'demo@crm.com' }, signOut: async () => {} };
+
+  renderKanban();
+  renderCards();
+  buildStageSelect('newStage');
+  buildTemplates();
+
+  // En demo, openLead usa datos locales
+  window._demoMode = true;
+}
+
+const _openLeadOrig = openLead;
+function openLead(id) {
+  if (window._demoMode) {
+    currentLeadId = id;
+    const lead = leadsData[id];
+    if (!lead) return;
+    updatePanelHead(lead);
+    fillInfoTab(lead);
+
+    // Conversación específica del lead o genérica
+    const convs = (window._demoConvs && window._demoConvs[id]) || [
+      { dir:'in',  text:'Hola! Me interesa el salón, ¿me pueden dar información?', time:'hace 2 días' },
+      { dir:'out', text:`¡Hola ${lead.name}! Soy Mel. Con gusto te ayudamos. ¿Me contás un poco del evento?`, who:'Mel', time:'hace 2 días' },
+      { dir:'in',  text: lead.lastMessage || '(Sin respuesta aún)', time:'hace 1h' },
+    ];
+    const msgList = document.getElementById('msgList');
+    msgList.innerHTML = convs.map(m => `
+      <div class="msg ${m.dir}">
+        <div class="msg-bubble">${esc(m.text)}</div>
+        <div class="msg-meta">${m.dir==='out'?(m.who||'')+'  ':''} ${m.time}</div>
+      </div>
+    `).join('');
+    msgList.scrollTop = msgList.scrollHeight;
+
+    // Tareas demo para algunos leads
+    const tasks = window._demoTasks && window._demoTasks[id] || [];
+    document.getElementById('taskList').innerHTML = tasks.map(t => `
+      <div class="task-item">
+        <div class="task-check ${t.done?'done':''}">  ${t.done?'✓':''}</div>
+        <div class="task-content">
+          <div class="task-text" style="${t.done?'text-decoration:line-through;opacity:.5':''}">${esc(t.text)}</div>
+          ${t.date?`<div class="task-date">📅 ${t.date}</div>`:''}
+        </div>
+      </div>
+    `).join('') || '<div style="color:var(--subtle);font-size:13px;text-align:center;padding:20px">Sin tareas</div>';
+
+    switchTab('chat');
+    document.getElementById('leadPanel').classList.add('open');
+    return;
+  }
+  _openLeadOrig(id);
+}
+
+// ════════════════════════════════════════════════════════════
+// HELPERS
+// ════════════════════════════════════════════════════════════
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function relTime(date) {
+  const diff = (Date.now() - date.getTime()) / 1000;
+  if (diff < 60)    return 'ahora';
+  if (diff < 3600)  return Math.floor(diff/60) + 'm';
+  if (diff < 86400) return Math.floor(diff/3600) + 'h';
+  return Math.floor(diff/86400) + 'd';
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — ROLES (solo Mariano y Nico pueden configurar)
+// ════════════════════════════════════════════════════════════
+const ADMIN_NAMES = ['Mariano', 'Nico', 'Demo'];
+
+function checkAdminAccess(name) {
+  if (ADMIN_NAMES.includes(name)) {
+    document.getElementById('btnAdmin').style.display = 'flex';
+  }
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — OPEN / CLOSE / TABS
+// ════════════════════════════════════════════════════════════
+let adminCurrentTab = 'stages';
+
+function openAdmin() {
+  document.getElementById('adminModal').classList.add('open');
+  switchAdminTab('stages');
+}
+
+function closeAdmin() {
+  document.getElementById('adminModal').classList.remove('open');
+}
+
+document.getElementById('adminModal').addEventListener('click', e => {
+  if (e.target === document.getElementById('adminModal')) closeAdmin();
+});
+
+function switchAdminTab(tab) {
+  adminCurrentTab = tab;
+  document.querySelectorAll('.admin-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['stages','templates','users'][i] === tab);
+  });
+  const body = document.getElementById('adminBody');
+  if (tab === 'stages')    renderStagesAdmin(body);
+  if (tab === 'templates') renderTemplatesAdmin(body);
+  if (tab === 'users')     renderUsersAdmin(body);
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — ETAPAS DEL FLUJO
+// ════════════════════════════════════════════════════════════
+function renderStagesAdmin(body) {
+  const stages = [...STAGES];
+  body.innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      Definí las etapas del pipeline. El orden aquí determina el orden en el tablero.
+    </p>
+    <div id="stageAdminList"></div>
+    <button class="btn-add-stage" onclick="adminAddStage()">+ Nueva etapa</button>
+    <button class="admin-save" onclick="adminSaveStages()">💾 Guardar cambios</button>
+  `;
+  renderStageAdminList(stages);
+}
+
+function renderStageAdminList(stages) {
+  const list = document.getElementById('stageAdminList');
+  list.innerHTML = stages.map((s, i) => `
+    <div class="stage-row" data-idx="${i}">
+      <div class="stage-row-dot" style="background:${s.color};border-color:${s.color}" title="Color"></div>
+      <input class="stage-row-color" type="color" value="${s.color}"
+        oninput="adminUpdateStageColor(${i}, this.value)" title="Cambiar color"/>
+      <input class="stage-row-name" value="${esc(s.label)}" placeholder="Nombre de la etapa"
+        oninput="adminUpdateStageName(${i}, this.value)"/>
+      <button class="stage-move" onclick="adminMoveStage(${i},-1)" ${i===0?'disabled style=opacity:.2':''}>↑</button>
+      <button class="stage-move" onclick="adminMoveStage(${i},1)" ${i===stages.length-1?'disabled style=opacity:.2':''}>↓</button>
+      <button class="stage-del" onclick="adminDeleteStage(${i})" title="Eliminar">✕</button>
+    </div>
+  `).join('');
+}
+
+// Estado temporal del editor de etapas
+let _editStages = null;
+
+function getEditStages() {
+  if (!_editStages) _editStages = [...STAGES];
+  return _editStages;
+}
+
+function adminUpdateStageName(i, val) { getEditStages()[i].label = val; }
+function adminUpdateStageColor(i, val) {
+  const s = getEditStages();
+  s[i].color = val;
+  const rows = document.querySelectorAll('.stage-row');
+  if (rows[i]) rows[i].querySelector('.stage-row-dot').style.background = val;
+}
+
+function adminAddStage() {
+  const s = getEditStages();
+  s.push({ id: 'etapa_' + Date.now(), label: 'Nueva etapa', color: '#6366f1' });
+  renderStageAdminList(s);
+}
+
+function adminDeleteStage(i) {
+  const s = getEditStages();
+  if (s.length <= 2) { alert('Debe haber al menos 2 etapas'); return; }
+  if (!confirm(`¿Eliminar "${s[i].label}"?`)) return;
+  s.splice(i, 1);
+  renderStageAdminList(s);
+}
+
+function adminMoveStage(i, dir) {
+  const s = getEditStages();
+  const j = i + dir;
+  if (j < 0 || j >= s.length) return;
+  [s[i], s[j]] = [s[j], s[i]];
+  renderStageAdminList(s);
+}
+
+function adminSaveStages() {
+  const s = getEditStages();
+  // Sincronizar nombres desde inputs (por si no se disparó oninput)
+  document.querySelectorAll('.stage-row').forEach((row, i) => {
+    const inp = row.querySelector('.stage-row-name');
+    if (inp) s[i].label = inp.value.trim() || s[i].label;
+  });
+  STAGES.length = 0;
+  s.forEach(st => STAGES.push(st));
+  saveStages(STAGES);
+  _editStages = null;
+  renderKanban();
+  renderCards();
+  buildStageSelect('newStage');
+  closeAdmin();
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — PLANTILLAS
+// ════════════════════════════════════════════════════════════
+function renderTemplatesAdmin(body) {
+  body.innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      Editá las plantillas de mensajes por categoría.
+    </p>
+    <div id="tplAdminList"></div>
+    <button class="btn-add-stage" onclick="adminAddTplCat()">+ Nueva categoría</button>
+    <button class="admin-save" onclick="adminSaveTemplates()">💾 Guardar plantillas</button>
+  `;
+  renderTplAdminList();
+}
+
+function renderTplAdminList() {
+  const list = document.getElementById('tplAdminList');
+  list.innerHTML = TEMPLATES.map((cat, ci) => `
+    <div style="margin-bottom:16px;background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:12px">
+      <div class="tpl-admin-cat">
+        <span style="font-size:16px">📁</span>
+        <input value="${esc(cat.cat)}" placeholder="Categoría"
+          oninput="TEMPLATES[${ci}].cat=this.value"
+          style="font-weight:700;font-size:13px;background:transparent;border:none;color:var(--text);outline:none;flex:1;border-bottom:1px solid var(--border)"/>
+        <button class="stage-del" onclick="adminDeleteTplCat(${ci})" title="Eliminar categoría">✕</button>
+      </div>
+      ${cat.items.map((t, ti) => `
+        <div class="tpl-admin-row">
+          <input value="${esc(t.title)}" placeholder="Título" oninput="TEMPLATES[${ci}].items[${ti}].title=this.value"/>
+          <textarea placeholder="Texto del mensaje" oninput="TEMPLATES[${ci}].items[${ti}].text=this.value">${esc(t.text)}</textarea>
+          <button class="stage-del" onclick="adminDeleteTpl(${ci},${ti})">✕</button>
+        </div>
+      `).join('')}
+      <button class="btn-add-stage" style="margin-top:6px" onclick="adminAddTplItem(${ci})">+ Agregar mensaje</button>
+    </div>
+  `).join('');
+}
+
+function adminAddTplCat() {
+  TEMPLATES.push({ cat: 'Nueva categoría', items: [] });
+  renderTplAdminList();
+}
+
+function adminDeleteTplCat(ci) {
+  if (!confirm('¿Eliminar esta categoría y todos sus mensajes?')) return;
+  TEMPLATES.splice(ci, 1);
+  renderTplAdminList();
+}
+
+function adminAddTplItem(ci) {
+  TEMPLATES[ci].items.push({ title: 'Nuevo mensaje', text: '' });
+  renderTplAdminList();
+}
+
+function adminDeleteTpl(ci, ti) {
+  TEMPLATES[ci].items.splice(ti, 1);
+  renderTplAdminList();
+}
+
+function adminSaveTemplates() {
+  saveTemplates(TEMPLATES);
+  buildTemplates();
+  closeAdmin();
+}
+
+// ════════════════════════════════════════════════════════════
+// ADMIN — USUARIOS
+// ════════════════════════════════════════════════════════════
+function renderUsersAdmin(body) {
+  const users = loadUsers() || DEMO_USERS;
+  body.innerHTML = `
+    <p style="font-size:12px;color:var(--muted);margin-bottom:14px">
+      Usuarios con acceso al CRM. La contraseña se muestra solo en modo demo.
+    </p>
+    <div id="userAdminList"></div>
+    <button class="btn-add-stage" onclick="adminAddUser()">+ Agregar usuario</button>
+    <button class="admin-save" onclick="adminSaveUsers()">💾 Guardar usuarios</button>
+  `;
+  renderUserAdminList(users);
+}
+
+function renderUserAdminList(users) {
+  const list = document.getElementById('userAdminList');
+  list.innerHTML = users.map((u, i) => `
+    <div class="user-row">
+      <div class="user-avatar">${u.name.charAt(0).toUpperCase()}</div>
+      <div class="user-info-col">
+        <div style="display:flex;gap:8px;margin-bottom:4px">
+          <input value="${esc(u.name)}" placeholder="Nombre"
+            oninput="adminUpdateUser(${i},'name',this.value)"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:13px;font-family:inherit;outline:none;width:110px"/>
+          <input value="${esc(u.email)}" placeholder="Email"
+            oninput="adminUpdateUser(${i},'email',this.value)"
+            style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;font-family:inherit;outline:none;flex:1"/>
+        </div>
+        <input value="${esc(u.pass)}" placeholder="Contraseña" type="text"
+          oninput="adminUpdateUser(${i},'pass',this.value)"
+          style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--muted);font-size:12px;font-family:inherit;outline:none;width:100%"/>
+      </div>
+      <button class="stage-del" onclick="adminDeleteUser(${i})" title="Eliminar">✕</button>
+    </div>
+  `).join('');
+}
+
+let _editUsers = null;
+function getEditUsers() {
+  if (!_editUsers) _editUsers = (loadUsers() || DEMO_USERS).map(u => ({...u}));
+  return _editUsers;
+}
+function adminUpdateUser(i, field, val) { getEditUsers()[i][field] = val; }
+function adminAddUser() {
+  getEditUsers().push({ name: 'Nuevo', email: 'nuevo@crm.com', pass: 'crm1234' });
+  renderUserAdminList(getEditUsers());
+}
+function adminDeleteUser(i) {
+  const u = getEditUsers();
+  if (u.length <= 1) { alert('Debe haber al menos 1 usuario'); return; }
+  u.splice(i, 1);
+  renderUserAdminList(u);
+}
+function adminSaveUsers() {
+  const u = getEditUsers();
+  // Sync DEMO_USERS
+  DEMO_USERS.length = 0;
+  u.forEach(usr => DEMO_USERS.push(usr));
+  saveUsers(u);
+  _editUsers = null;
+  closeAdmin();
+}
+
+// ════════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════════
+initFirebase();
+
+// ── PWA Service Worker ────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then(r => console.log('SW registrado:', r.scope))
+      .catch(e => console.warn('SW error:', e));
+  });
+}
+
+// ── Prompt de instalación ─────────────────────────────────
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  showInstallBanner();
+});
+
+function showInstallBanner() {
+  if (document.getElementById('installBanner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'installBanner';
+  banner.style.cssText = `
+    position:fixed;bottom:80px;left:50%;transform:translateX(-50%);
+    background:#6366f1;color:#fff;padding:10px 20px;border-radius:24px;
+    font-size:13px;font-weight:600;cursor:pointer;z-index:1000;
+    box-shadow:0 4px 20px rgba(99,102,241,.5);display:flex;align-items:center;gap:8px;
+    white-space:nowrap;
+  `;
+  banner.innerHTML = '📲 Instalar app';
+  banner.onclick = () => {
+    banner.remove();
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(() => { deferredPrompt = null; });
+  };
+  document.body.appendChild(banner);
+  setTimeout(() => banner.remove(), 8000);
+}
+
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  console.log('App instalada ✓');
+});
+</script>
+</body>
+</html>
