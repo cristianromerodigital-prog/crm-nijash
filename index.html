@@ -295,7 +295,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.15</div>
+    <div class="login-version">V1.16</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       mariano@crm.com / palacio123<br>
@@ -1382,12 +1382,13 @@ function initDemoMode() {
 
   // Mock db — dispara onSnapshot con datos demo reales
   const _msgCbs = {};
+  const _allDemoLeads = { ...leadsData }; // copia fija, no se borra al cambiar salón
   db = {
     collection: () => ({
       where: (field, op, val) => ({
         onSnapshot: (cb) => {
           cb({
-            docChanges: () => Object.values(leadsData)
+            docChanges: () => Object.values(_allDemoLeads)
               .filter(l => l[field] === val)
               .map(d => ({ type:'added', doc:{ id:d.id, data:()=>({...d}) } }))
           });
