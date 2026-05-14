@@ -295,7 +295,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.06</div>
+    <div class="login-version">V1.07</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       mariano@crm.com / palacio123<br>
@@ -995,10 +995,24 @@ async function sendMessage() {
   input.style.height = '';
 
   const user = auth.currentUser;
+  const author = user ? user.email.split('@')[0] : 'Usuario';
+
+  if (window._demoMode) {
+    if (!window._demoConvs[currentLeadId]) window._demoConvs[currentLeadId] = [];
+    window._demoConvs[currentLeadId].push({ text, dir:'out', who:author, time:'ahora' });
+    const msgList = document.getElementById('msgList');
+    const div = document.createElement('div');
+    div.className = 'msg out';
+    div.innerHTML = `<div class="msg-bubble">${esc(text)}</div><div class="msg-meta">${esc(author)}  ahora</div>`;
+    msgList.appendChild(div);
+    msgList.scrollTop = msgList.scrollHeight;
+    return;
+  }
+
   const msgData = {
     text,
     direction: 'out',
-    author:    user ? user.email.split('@')[0] : 'Usuario',
+    author,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     channel:   'manual',
   };
@@ -1138,7 +1152,7 @@ function buildTemplates() {
   container.innerHTML = TEMPLATES.map(cat => `
     <div class="tpl-category">${cat.cat}</div>
     ${cat.items.map(t => `
-      <div class="tpl-card" onclick="copyTemplate(this, ${JSON.stringify(t.text).replace(/</g,'&lt;')})">
+      <div class="tpl-card" onclick="copyTemplate(this)" data-text="${esc(t.text)}">
         <div class="tpl-title">${esc(t.title)}</div>
         <div class="tpl-preview">${esc(t.text)}</div>
         <span class="tpl-copy">📋</span>
@@ -1147,7 +1161,8 @@ function buildTemplates() {
   `).join('');
 }
 
-function copyTemplate(el, text) {
+function copyTemplate(el) {
+  const text = el.dataset.text;
   document.getElementById('chatInput').value = text;
   autoResize(document.getElementById('chatInput'));
   switchTab('chat');
