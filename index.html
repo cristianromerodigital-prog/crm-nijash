@@ -295,7 +295,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.04</div>
+    <div class="login-version">V1.05</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       mariano@crm.com / palacio123<br>
@@ -1347,6 +1347,7 @@ function initDemoMode() {
   };
 
   // Mock db — dispara onSnapshot con datos demo reales
+  const _msgCbs = {};
   db = {
     collection: () => ({
       where: (field, op, val) => ({
@@ -1360,16 +1361,32 @@ function initDemoMode() {
         }
       }),
       doc: (id) => ({
-        collection: () => ({
-          orderBy: () => ({
-            onSnapshot: (cb) => {
-              const tasks = (window._demoTasks && window._demoTasks[id]) || [];
-              cb({ docChanges: () => [], forEach: () => {} });
-              return () => {};
-            }
-          }),
-          add: async () => {}
-        }),
+        collection: (sub) => {
+          if (sub === 'messages') {
+            return {
+              orderBy: () => ({
+                onSnapshot: (cb) => {
+                  if (!window._demoConvs[id]) window._demoConvs[id] = [];
+                  _msgCbs[id] = cb;
+                  const msgs = window._demoConvs[id];
+                  cb({ docChanges: () => msgs.map((m, i) => ({ type:'added', doc:{ id:'m'+i, data:()=>({ text:m.text, direction:m.dir, author:m.who||'', createdAt:{ toDate:()=>new Date() }, channel:'demo' }) } })) });
+                  return () => { delete _msgCbs[id]; };
+                }
+              }),
+              add: async (data) => {
+                if (!window._demoConvs[id]) window._demoConvs[id] = [];
+                window._demoConvs[id].push({ text:data.text, dir:data.direction, who:data.author, time:'ahora' });
+                if (_msgCbs[id]) _msgCbs[id]({ docChanges: () => [{ type:'added', doc:{ id:'m'+Date.now(), data:()=>({...data, createdAt:{ toDate:()=>new Date() }}) } }] });
+              }
+            };
+          }
+          return {
+            orderBy: () => ({
+              onSnapshot: (cb) => { cb({ docChanges: () => [], forEach: () => {} }); return () => {}; }
+            }),
+            add: async () => {}
+          };
+        },
         update: async (data) => {
           if (leadsData[id]) Object.assign(leadsData[id], data);
           renderCards();
