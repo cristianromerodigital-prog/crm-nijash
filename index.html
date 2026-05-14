@@ -39,7 +39,7 @@ button{cursor:pointer;border:none;font-family:inherit}
 .login-divider{width:40px;height:2px;background:var(--accent);margin:0 auto 28px;border-radius:1px}
 .login-box h1{font-size:18px;margin-bottom:4px;color:var(--text);font-weight:700}
 .login-box p{color:var(--muted);font-size:12px;margin-bottom:24px}
-.login-box input{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:14px;margin-bottom:10px;outline:none;font-family:inherit}
+.login-box input{width:100%;padding:11px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:16px;margin-bottom:10px;outline:none;font-family:inherit}
 .login-box input:focus{border-color:var(--accent);background:#fff}
 .login-box .btn-login{width:100%;padding:12px;background:var(--header-bg);color:var(--accent);border-radius:8px;font-size:13px;font-weight:700;letter-spacing:.5px;transition:.2s;border:1px solid var(--accent)}
 .login-box .btn-login:hover{background:var(--accent);color:var(--header-bg)}
@@ -662,6 +662,7 @@ function initFirebase() {
     auth = firebase.auth();
     auth.onAuthStateChanged(user => {
       if (user) {
+        resetZoom();
         document.getElementById('loginScreen').style.display = 'none';
         document.getElementById('app').style.display = 'flex';
         document.getElementById('fabAdd').style.display = 'flex';
@@ -692,6 +693,7 @@ async function doLogin() {
   if (window._demoMode) {
     const user = DEMO_USERS.find(u => u.email === email && u.pass === pass);
     if (!user) { err.textContent = 'Email o contraseña incorrectos'; return; }
+    resetZoom();
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     document.getElementById('fabAdd').style.display = 'flex';
@@ -1713,6 +1715,12 @@ function setAppHeight() {
 }
 setAppHeight();
 window.addEventListener('resize', setAppHeight);
+// Reset zoom de iOS (Safari hace auto-zoom en inputs con font-size < 16px)
+function resetZoom(){
+  const vp = document.querySelector('meta[name="viewport"]');
+  vp.content = 'width=device-width,initial-scale=1,maximum-scale=1';
+  setTimeout(()=>{ vp.content = 'width=device-width,initial-scale=1'; }, 300);
+}
 
 initFirebase();
 
