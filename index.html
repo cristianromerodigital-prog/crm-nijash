@@ -295,14 +295,14 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.16</div>
+    <div class="login-version">V1.17</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
+      nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
       mariano@crm.com / palacio123<br>
       clari@crm.com &nbsp;/ palacio123<br>
       mel@crm.com &nbsp;&nbsp;&nbsp;&nbsp;/ palacio123<br>
       leila@crm.com &nbsp;&nbsp;/ palacio123<br>
-      nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
       demo@crm.com &nbsp;&nbsp;/ demo1234
     </div>
   </div>
@@ -637,11 +637,11 @@ function saveUsers(users) { localStorage.setItem(LS_USERS, JSON.stringify(users)
 // USUARIOS DEMO (hardcoded, sin base de datos)
 // ════════════════════════════════════════════════════════════
 const DEMO_USERS = [
+  { email: 'nico@crm.com',     pass: 'palacio123', name: 'Nico'    },
   { email: 'mariano@crm.com',  pass: 'palacio123', name: 'Mariano' },
-  { email: 'clari@crm.com',   pass: 'palacio123', name: 'Clarri'  },
+  { email: 'clari@crm.com',    pass: 'palacio123', name: 'Clarri'  },
   { email: 'mel@crm.com',      pass: 'palacio123', name: 'Mel'     },
   { email: 'leila@crm.com',    pass: 'palacio123', name: 'Leila'   },
-  { email: 'nico@crm.com',     pass: 'palacio123', name: 'Nico'    },
   { email: 'demo@crm.com',     pass: 'demo1234',   name: 'Demo'    },
 ];
 
@@ -901,6 +901,14 @@ async function createLead() {
 }
 
 async function updateLeadStage(leadId, stageId) {
+  if (window._demoMode) {
+    if (leadsData[leadId]) {
+      leadsData[leadId].stage = stageId;
+      renderCards();
+      updatePanelHead(leadsData[leadId]);
+    }
+    return;
+  }
   await db.collection('leads').doc(leadId).update({
     stage: stageId,
     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
