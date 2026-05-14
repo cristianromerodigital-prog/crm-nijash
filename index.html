@@ -295,7 +295,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.05</div>
+    <div class="login-version">V1.06</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       mariano@crm.com / palacio123<br>
@@ -714,6 +714,9 @@ async function doLogin() {
 async function doLogout() {
   if (unsubLeads) unsubLeads();
   await auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('fabAdd').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
 }
 
 document.getElementById('loginPass').addEventListener('keydown', e => {
@@ -1145,16 +1148,14 @@ function buildTemplates() {
 }
 
 function copyTemplate(el, text) {
-  navigator.clipboard.writeText(text).then(() => {
-    const icon = el.querySelector('.tpl-copy');
-    icon.textContent = '✓';
-    icon.classList.add('tpl-copied');
-    setTimeout(() => { icon.textContent = '📋'; icon.classList.remove('tpl-copied'); }, 1500);
-    // Pasar al chat con el texto
-    document.getElementById('chatInput').value = text;
-    autoResize(document.getElementById('chatInput'));
-    switchTab('chat');
-  });
+  document.getElementById('chatInput').value = text;
+  autoResize(document.getElementById('chatInput'));
+  switchTab('chat');
+  const icon = el.querySelector('.tpl-copy');
+  icon.textContent = '✓';
+  icon.classList.add('tpl-copied');
+  setTimeout(() => { icon.textContent = '📋'; icon.classList.remove('tpl-copied'); }, 1500);
+  navigator.clipboard?.writeText(text).catch(() => {});
 }
 
 // ════════════════════════════════════════════════════════════
