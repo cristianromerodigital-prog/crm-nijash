@@ -1,4 +1,4 @@
-const CACHE = 'crm-v3';
+const CACHE = 'crm-v4';
 const SDK_CACHE = 'crm-sdk-v1';
 
 const SDK_URLS = [
