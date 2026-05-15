@@ -1852,6 +1852,173 @@ window.addEventListener('appinstalled', () => {
 });
 
 // ════════════════════════════════════════════════════════════
+// BOT AUTOMÁTICO
+// ════════════════════════════════════════════════════════════
+function botAutoReply(leadId, incomingText) {
+  const lead = leadsData[leadId];
+  if (!lead || !window._demoMode || !lead._simContactId) return;
+
+  const lower = incomingText.toLowerCase();
+  const firstName = (lead.name || 'ahí').split(' ')[0];
+  let reply = null, nextStage = null;
+
+  if (lead.stage === 'falta_whatsapp') {
+    const phone = extractPhone(incomingText);
+    if (phone) {
+      lead.phone = phone;
+      nextStage = 'falta_datos';
+      reply = `¡Perfecto, anotado tu número! 😊\n\nPara armar tu presupuesto personalizado necesito:\n\n📅 Fecha tentativa del evento\n👥 Cantidad aproximada de invitados\n🎉 Tipo de evento (boda, 15 años, corporativo...)\n📆 Año`;
+    } else {
+      reply = `¡Hola ${firstName}! 👋 Soy Mel, ejecutiva de cuenta del Palacio Nijash.\n\nGracias por escribirnos 😊 Para poder ayudarte mejor y enviarte toda la información, ¿me podés compartir tu número de WhatsApp?`;
+    }
+  }
+
+  else if (lead.stage === 'falta_datos') {
+    const evData = parseEventData(incomingText);
+    if (evData.hasData) {
+      if (evData.type)   lead.eventType = evData.type;
+      if (evData.guests) lead.guests    = evData.guests;
+      if (evData.year)   lead.eventYear = String(evData.year);
+      nextStage = 'presupuesto_enviado';
+      reply = buildBudget(lead, evData);
+    } else {
+      reply = `¡Hola ${firstName}! 😊 Soy Mel.\n\nPara armar tu presupuesto necesito:\n\n📅 Fecha tentativa del evento\n👥 Cantidad de invitados\n🎉 Tipo de evento (boda, 15 años, corporativo...)\n📆 Año`;
+    }
+  }
+
+  else if (lead.stage === 'presupuesto_enviado') {
+    if (/gracias|perfecto|ok|bueno|bien|copado|genial|buenísimo|me gust|entendido|recibido|claro|dale|divino|lindo|bárbaro|barbaro/i.test(lower)) {
+      nextStage = 'quiere_visitar';
+      reply = `¡Nos alegra que te haya gustado! 😊\n\n¿Te gustaría conocer el salón en persona?\n\n📅 Martes a viernes de 16:00 a 19:00 hs\n📅 Sábados de 10:00 a 13:00 hs\n\n¿Qué día les queda mejor?`;
+    } else {
+      reply = `¡Recibido! 😊 ¿Surgió alguna consulta sobre el presupuesto?`;
+    }
+  }
+
+  else if (lead.stage === 'quiere_visitar') {
+    const dayInfo = extractVisitDay(incomingText);
+    if (dayInfo) {
+      nextStage = 'pendiente_visita';
+      lead.notes = `Visita pactada: ${dayInfo}`;
+      reply = `¡Perfecto! 🙌 Quedamos para el ${dayInfo}.\n\n📍 Av. Gral. Paz 4000, Villa Luzuriaga\n(A 10 min del Acceso Oeste)\n\nLos espera Clarri. ¡Cualquier duda me escribís! 😊`;
+    } else {
+      reply = `¡Cuando quieran! 😊 Podemos recibirlos:\n\n📅 Martes a viernes de 16 a 19hs\n📅 Sábados de 10 a 13hs\n\n¿Qué día les queda mejor?`;
+    }
+  }
+
+  if (reply) {
+    setTimeout(() => sendBotReply(leadId, reply, nextStage), 1300 + Math.random() * 700);
+  }
+}
+
+function sendBotReply(leadId, text, nextStage) {
+  const lead = leadsData[leadId];
+  if (!lead) return;
+
+  if (!window._demoConvs[leadId]) window._demoConvs[leadId] = [];
+  window._demoConvs[leadId].push({ dir:'out', text, who:'🤖 Bot', time:'ahora' });
+
+  if (nextStage) {
+    lead.stage = nextStage;
+    lead.updatedAt = { toDate: () => new Date() };
+  }
+  lead.lastMessage = text.split('\n')[0].slice(0, 80);
+  renderCards();
+
+  if (currentLeadId === leadId) {
+    const msgList = document.getElementById('msgList');
+    if (msgList) {
+      const d = document.createElement('div');
+      d.className = 'msg out';
+      d.innerHTML = `<div class="msg-bubble">${esc(text).replace(/\n/g,'<br>')}</div><div class="msg-meta">🤖 Bot  ahora</div>`;
+      msgList.appendChild(d);
+      msgList.scrollTop = msgList.scrollHeight;
+    }
+  }
+
+  if (window._simCh && lead._simContactId) {
+    window._simCh.postMessage({ type:'crm_reply', to:lead._simContactId, text, author:'Mel (Bot)' });
+  }
+}
+
+function extractPhone(text) {
+  const m = text.match(/(\+?[\d][\d\s\-\(\)]{6,})/);
+  if (!m) return null;
+  const digits = m[1].replace(/\D/g, '');
+  return digits.length >= 8 ? digits : null;
+}
+
+function parseEventData(text) {
+  const lower = text.toLowerCase();
+  const r = { hasData:false, type:null, guests:null, year:null, month:null };
+
+  if (/boda|casamiento/.test(lower))             { r.type = 'Boda';        r.hasData = true; }
+  else if (/\b15\b|quince/.test(lower))           { r.type = '15 años';     r.hasData = true; }
+  else if (/corporativo|empresa|laboral/.test(lower)){ r.type = 'Corporativo'; r.hasData = true; }
+  else if (/cumple/.test(lower))                  { r.type = 'Cumpleaños';  r.hasData = true; }
+
+  const gm = text.match(/\b(\d{2,3})\b/);
+  if (gm) { r.guests = parseInt(gm[1]); r.hasData = true; }
+
+  const ym = text.match(/\b(202[5-9]|203\d)\b/);
+  if (ym) { r.year = parseInt(ym[1]); r.hasData = true; }
+
+  const months = ['enero','febrero','marzo','abril','mayo','junio','julio',
+                  'agosto','septiembre','octubre','noviembre','diciembre'];
+  for (const m of months) {
+    if (lower.includes(m)) { r.month = m; r.hasData = true; break; }
+  }
+
+  return r;
+}
+
+function buildBudget(lead, evData) {
+  const name   = (lead.name || '').split(' ')[0];
+  const salon  = lead.salon === 'complejo' ? 'Complejo New Cubix' : 'Palacio Nijash';
+  const type   = evData.type   || lead.eventType || 'Evento';
+  const year   = evData.year   || lead.eventYear  || (new Date().getFullYear() + 1);
+  const guests = evData.guests || lead.guests      || 150;
+  const fecha  = evData.month  ? `${evData.month} ${year}` : String(year);
+  const cap    = (Math.ceil(guests / 50) * 50) + 50;
+  const ppp    = type === 'Boda' ? 320000 : type === '15 años' ? 285000 : 260000;
+  const total  = (ppp * guests).toLocaleString('es-AR');
+  const sena   = Math.round(ppp * guests * 0.3 / 1000) * 1000;
+
+  return `¡Hola ${name}! 🎉 Acá te enviamos el presupuesto para tu ${type}:\n\n` +
+    `🏛 ${salon.toUpperCase()}\n` +
+    `📅 ${type} · ${fecha} · ${guests} invitados aprox.\n\n` +
+    `📋 PAQUETE INCLUYE:\n` +
+    `✅ Salón con capacidad para ${cap} personas\n` +
+    `✅ Ambientación y decoración base\n` +
+    `✅ Catering completo (entrada, principal, postre y café)\n` +
+    `✅ Barra libre 6 horas\n` +
+    `✅ Personal de servicio\n` +
+    `✅ Coordinador de evento\n` +
+    `✅ Mantelería y sillas tiffany\n` +
+    `✅ Iluminación decorativa\n\n` +
+    `💰 INVERSIÓN:\n` +
+    `$${ppp.toLocaleString('es-AR')} por persona + IVA\n` +
+    `Total estimado: $${total} + IVA\n` +
+    `Seña para reservar (30%): $${sena.toLocaleString('es-AR')}\n\n` +
+    `❌ No incluye: DJ/banda, flores extra, torta, cotillón\n\n` +
+    `¡Quedamos a disposición para cualquier consulta! 😊`;
+}
+
+function extractVisitDay(text) {
+  const days = ['lunes','martes','miércoles','miercoles','jueves','viernes','sábado','sabado','domingo'];
+  const lower = text.toLowerCase();
+  for (const d of days) {
+    if (lower.includes(d)) {
+      const timeM = text.match(/\b(\d{1,2})[:\.](\d{2})\s*h[s]?|\b(\d{1,2})\s*h[s]?\b/i);
+      const timeStr = timeM ? ` a las ${timeM[0]}` : '';
+      return d + timeStr;
+    }
+  }
+  const dateM = text.match(/\d{1,2}\s+de\s+\w+/i);
+  return dateM ? dateM[0] : null;
+}
+
+// ════════════════════════════════════════════════════════════
 // SIMULATOR (BroadcastChannel)
 // ════════════════════════════════════════════════════════════
 function initSimulator() {
@@ -1907,6 +2074,9 @@ function receiveSimMessage({ channel, contactId, contactName, text }) {
   // Toast notification
   const icon = (channel === 'ig' || channel === 'instagram') ? '📸' : '📱';
   showSimToast(`${icon} ${contactName || contactId}: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`);
+
+  // Trigger bot
+  botAutoReply(lead.id, text);
 }
 
 function showSimToast(msg) {
