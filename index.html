@@ -298,7 +298,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.20</div>
+    <div class="login-version">V1.21</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
@@ -1957,8 +1957,18 @@ function parseEventData(text) {
   else if (/corporativo|empresa|laboral/.test(lower)){ r.type = 'Corporativo'; r.hasData = true; }
   else if (/cumple/.test(lower))                  { r.type = 'Cumpleaños';  r.hasData = true; }
 
-  const gm = text.match(/\b(\d{2,3})\b/);
-  if (gm) { r.guests = parseInt(gm[1]); r.hasData = true; }
+  // Guests: primero buscar con contexto, luego sin fechas
+  const ctxM = text.match(/(\d+)\s*(invitados?|personas?|pax)/i);
+  if (ctxM) {
+    r.guests = parseInt(ctxM[1]); r.hasData = true;
+  } else {
+    const clean = text
+      .replace(/\d{1,2}\s+de\s+\w+/gi, '')
+      .replace(/\d{1,2}[\/\-]\d{1,2}([\/\-]\d{2,4})?/g, '')
+      .replace(/\b(202[5-9]|203\d)\b/g, '');
+    const gm = clean.match(/\b(\d{2,3})\b/);
+    if (gm) { r.guests = parseInt(gm[1]); r.hasData = true; }
+  }
 
   const ym = text.match(/\b(202[5-9]|203\d)\b/);
   if (ym) { r.year = parseInt(ym[1]); r.hasData = true; }
