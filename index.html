@@ -298,7 +298,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.21</div>
+    <div class="login-version">V1.22</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
@@ -1889,18 +1889,36 @@ function botAutoReply(leadId, incomingText) {
   else if (lead.stage === 'presupuesto_enviado') {
     if (/gracias|perfecto|ok|bueno|bien|copado|genial|buenísimo|me gust|entendido|recibido|claro|dale|divino|lindo|bárbaro|barbaro/i.test(lower)) {
       nextStage = 'quiere_visitar';
-      reply = `¡Nos alegra que te haya gustado! 😊\n\n¿Te gustaría conocer el salón en persona?\n\n📅 Martes a viernes de 16:00 a 19:00 hs\n📅 Sábados de 10:00 a 13:00 hs\n\n¿Qué día les queda mejor?`;
+      const slots = generateVisitSlots();
+      lead._visitSlots = slots;
+      reply = `¡Nos alegra que te haya gustado! 😊\n\n¿Te gustaría conocer el salón en persona? Tenemos disponible:\n\n1️⃣ ${slots[0].label}\n2️⃣ ${slots[1].label}\n3️⃣ ${slots[2].label}\n\n¿Alguno les viene bien o preferís otro día?`;
     } else {
       reply = `¡Recibido! 😊 ¿Surgió alguna consulta sobre el presupuesto?`;
     }
   }
 
   else if (lead.stage === 'quiere_visitar') {
-    const dayInfo = extractVisitDay(incomingText);
-    if (dayInfo) {
+    const slots = lead._visitSlots || [];
+    let chosen = null;
+
+    // Selección por número (1, 2, 3)
+    const numM = incomingText.match(/\b([1-3])\b/);
+    if (numM && slots[parseInt(numM[1]) - 1]) {
+      chosen = slots[parseInt(numM[1]) - 1].label;
+    }
+    // Selección por nombre de día que coincida con un slot
+    if (!chosen) {
+      for (const slot of slots) {
+        if (lower.includes(slot.day)) { chosen = slot.label; break; }
+      }
+    }
+    // Fallback: cualquier día mencionado
+    if (!chosen) chosen = extractVisitDay(incomingText);
+
+    if (chosen) {
       nextStage = 'pendiente_visita';
-      lead.notes = `Visita pactada: ${dayInfo}`;
-      reply = `¡Perfecto! 🙌 Quedamos para el ${dayInfo}.\n\n📍 Av. Gral. Paz 4000, Villa Luzuriaga\n(A 10 min del Acceso Oeste)\n\nLos espera Clarri. ¡Cualquier duda me escribís! 😊`;
+      lead.notes = `Visita pactada: ${chosen}`;
+      reply = `¡Perfecto! 🙌 Quedamos para el ${chosen}.\n\n📍 Av. Gral. Paz 4000, Villa Luzuriaga\n(A 10 min del Acceso Oeste)\n\nLos espera Clarri. ¡Cualquier duda me escribís! 😊`;
     } else {
       reply = `¡Cuando quieran! 😊 Podemos recibirlos:\n\n📅 Martes a viernes de 16 a 19hs\n📅 Sábados de 10 a 13hs\n\n¿Qué día les queda mejor?`;
     }
@@ -2012,6 +2030,23 @@ function buildBudget(lead, evData) {
     `Seña para reservar (30%): $${sena.toLocaleString('es-AR')}\n\n` +
     `❌ No incluye: DJ/banda, flores extra, torta, cotillón\n\n` +
     `¡Quedamos a disposición para cualquier consulta! 😊`;
+}
+
+function generateVisitSlots() {
+  const dayNames = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const available = { 2:'17hs', 3:'17hs', 4:'16hs', 5:'17hs', 6:'11hs' };
+  const slots = [];
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (slots.length < 3) {
+    const dow = d.getDay();
+    if (available[dow]) {
+      const label = `${dayNames[dow]} ${d.getDate()}/${d.getMonth()+1} a las ${available[dow]}`;
+      slots.push({ day: dayNames[dow], label });
+    }
+    d.setDate(d.getDate() + 1);
+  }
+  return slots;
 }
 
 function extractVisitDay(text) {
