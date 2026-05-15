@@ -279,6 +279,9 @@ select.info-input option{background:#fff}
 .stage-option{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;transition:.15s;font-size:13px;color:var(--text)}
 .stage-option:hover{background:var(--surface2)}
 .stage-option .dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+/* ─── SIMULATOR TOAST ─── */
+#simToast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--header-bg);color:var(--header-text);padding:10px 18px;border-radius:24px;font-size:13px;font-weight:600;z-index:9999;pointer-events:none;opacity:0;transition:opacity .25s,transform .25s;white-space:nowrap;display:flex;align-items:center;gap:8px;border:1px solid var(--accent)}
+#simToast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
@@ -295,7 +298,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.18</div>
+    <div class="login-version">V1.19</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
@@ -307,6 +310,8 @@ select.info-input option{background:#fff}
     </div>
   </div>
 </div>
+
+<div id="simToast"></div>
 
 <!-- ─── APP ─── -->
 <div id="app">
@@ -653,6 +658,7 @@ function initFirebase() {
   if (isDemo) {
     console.info('Modo demo activo — sin base de datos');
     initDemoMode();
+    initSimulator();
     document.getElementById('demoHint').style.display = 'block';
     return;
   }
@@ -677,6 +683,7 @@ function initFirebase() {
   } catch(e) {
     console.warn('Firebase error. Modo demo activo.');
     initDemoMode();
+    initSimulator();
   }
 }
 
@@ -1014,6 +1021,11 @@ async function sendMessage() {
     div.innerHTML = `<div class="msg-bubble">${esc(text)}</div><div class="msg-meta">${esc(author)}  ahora</div>`;
     msgList.appendChild(div);
     msgList.scrollTop = msgList.scrollHeight;
+    // Broadcast reply to simulator
+    const simLead = leadsData[currentLeadId];
+    if (window._simCh && simLead && simLead._simContactId) {
+      window._simCh.postMessage({ type:'crm_reply', to:simLead._simContactId, text, author });
+    }
     return;
   }
 
@@ -1838,6 +1850,72 @@ window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   console.log('App instalada ✓');
 });
+
+// ════════════════════════════════════════════════════════════
+// SIMULATOR (BroadcastChannel)
+// ════════════════════════════════════════════════════════════
+function initSimulator() {
+  if (!('BroadcastChannel' in window)) return;
+  window._simCh = new BroadcastChannel('crm_inbox');
+  window._simCh.addEventListener('message', e => {
+    if (e.data.type === 'sim_message') receiveSimMessage(e.data);
+  });
+}
+
+function receiveSimMessage({ channel, contactId, contactName, text }) {
+  if (!window._demoMode) return;
+
+  // Find existing sim lead
+  let lead = Object.values(leadsData).find(l => l._simContactId === contactId);
+
+  if (!lead) {
+    const isIg = channel === 'instagram' || channel === 'ig';
+    const id = 'sim_' + Date.now();
+    lead = {
+      id, salon: currentSalon,
+      name: contactName || contactId,
+      phone: isIg ? '' : contactId,
+      source: isIg ? 'instagram' : 'whatsapp',
+      stage: isIg ? 'falta_whatsapp' : 'falta_datos',
+      assignedTo: '', guests: 0, notes: '',
+      lastMessage: text,
+      updatedAt: { toDate: () => new Date() },
+      _simContactId: contactId
+    };
+    leadsData[id] = lead;
+    window._demoConvs[id] = [];
+  } else {
+    lead.lastMessage = text;
+    lead.updatedAt = { toDate: () => new Date() };
+  }
+
+  window._demoConvs[lead.id].push({ dir:'in', text, time:'ahora' });
+  renderCards();
+
+  // If panel open for this lead, append bubble live
+  if (currentLeadId === lead.id) {
+    const msgList = document.getElementById('msgList');
+    if (msgList) {
+      const d = document.createElement('div');
+      d.className = 'msg in';
+      d.innerHTML = `<div class="msg-bubble">${esc(text)}</div><div class="msg-meta">ahora</div>`;
+      msgList.appendChild(d);
+      msgList.scrollTop = msgList.scrollHeight;
+    }
+  }
+
+  // Toast notification
+  const icon = (channel === 'ig' || channel === 'instagram') ? '📸' : '📱';
+  showSimToast(`${icon} ${contactName || contactId}: ${text.slice(0, 40)}${text.length > 40 ? '…' : ''}`);
+}
+
+function showSimToast(msg) {
+  const t = document.getElementById('simToast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(() => t.classList.remove('show'), 3500);
+}
 </script>
 </body>
 </html>
