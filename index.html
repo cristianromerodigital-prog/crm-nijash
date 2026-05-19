@@ -298,7 +298,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.22</div>
+    <div class="login-version">V1.23</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
@@ -660,6 +660,13 @@ function initFirebase() {
     initDemoMode();
     initSimulator();
     document.getElementById('demoHint').style.display = 'block';
+    const _autoUser = DEMO_USERS.find(u => u.email === 'demo@crm.com');
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    document.getElementById('fabAdd').style.display = 'flex';
+    document.getElementById('headerUser').textContent = _autoUser.name;
+    checkAdminAccess(_autoUser.name);
+    startApp();
     return;
   }
   try {
