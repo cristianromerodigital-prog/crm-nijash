@@ -99,6 +99,8 @@ header{display:flex;align-items:center;gap:12px;padding:0 16px;height:56px;backg
 .panel-stage-sel{font-size:10px;padding:4px 10px;border-radius:20px;color:var(--header-bg);font-weight:700;cursor:pointer;border:none;font-family:inherit;max-width:150px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:.3px}
 .btn-close-panel{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.08);color:#9a8a5a;font-size:18px;line-height:1;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
 .btn-close-panel:hover{background:rgba(201,168,76,.2);color:var(--accent)}
+.btn-delete-lead{width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.08);color:#9a8a5a;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:.15s}
+.btn-delete-lead:hover{background:rgba(220,38,38,.15);color:#f87171}
 .panel-tabs{display:flex;border-bottom:2px solid var(--border);flex-shrink:0;background:var(--surface2)}
 .p-tab{flex:1;padding:10px 6px;font-size:11px;font-weight:700;color:var(--muted);background:transparent;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.15s;letter-spacing:.2px}
 .p-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
@@ -298,7 +300,7 @@ select.info-input option{background:#fff}
     <input type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password"/>
     <button class="btn-login" onclick="doLogin()">Ingresar</button>
     <div class="login-error" id="loginErr"></div>
-    <div class="login-version">V1.23</div>
+    <div class="login-version">V1.24</div>
     <div id="demoHint" style="display:none;margin-top:20px;padding:12px;background:#1e293b;border-radius:8px;font-size:12px;color:#94a3b8;text-align:left;line-height:1.8">
       <strong style="color:#c9a84c">Modo Demo</strong><br>
       nico@crm.com &nbsp;&nbsp;&nbsp;/ palacio123<br>
@@ -340,6 +342,7 @@ select.info-input option{background:#fff}
     <div class="panel-source" id="panelSource"></div>
     <div class="panel-name" id="panelName"></div>
     <button class="panel-stage-sel" id="panelStageSel" onclick="openStageModal()"></button>
+    <button class="btn-delete-lead" onclick="confirmDeleteLead()" title="Eliminar lead">🗑</button>
     <button class="btn-close-panel" onclick="closePanel()">×</button>
   </div>
   <div class="panel-tabs">
@@ -527,6 +530,18 @@ select.info-input option{background:#fff}
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAddLead()">Cancelar</button>
       <button class="btn-confirm" onclick="createLead()">Crear Lead</button>
+    </div>
+  </div>
+</div>
+
+<!-- ─── MODAL ELIMINAR LEAD ─── -->
+<div class="modal-overlay" id="deleteLeadModal">
+  <div class="modal-box">
+    <h2>Eliminar lead</h2>
+    <p style="color:var(--muted);font-size:13px;margin:8px 0 20px">¿Seguro que querés eliminar a <strong id="deleteLeadName"></strong>? Esta acción no se puede deshacer.</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeDeleteLead()">Cancelar</button>
+      <button class="btn-confirm" style="background:#7f1d1d;border-color:#f87171;color:#f87171" onclick="doDeleteLead()">Eliminar</button>
     </div>
   </div>
 </div>
@@ -912,6 +927,28 @@ async function createLead() {
   const ref = await db.collection('leads').add(data);
   closeAddLead();
   openLead(ref.id);
+}
+
+function confirmDeleteLead() {
+  if (!currentLeadId) return;
+  const lead = leadsData[currentLeadId];
+  document.getElementById('deleteLeadName').textContent = lead?.name || 'este lead';
+  document.getElementById('deleteLeadModal').classList.add('open');
+}
+function closeDeleteLead() {
+  document.getElementById('deleteLeadModal').classList.remove('open');
+}
+async function doDeleteLead() {
+  if (!currentLeadId) return;
+  const id = currentLeadId;
+  closeDeleteLead();
+  closePanel();
+  if (window._demoMode) {
+    delete leadsData[id];
+    renderCards();
+    return;
+  }
+  await db.collection('leads').doc(id).delete();
 }
 
 async function updateLeadStage(leadId, stageId) {
